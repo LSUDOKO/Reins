@@ -57,8 +57,8 @@ impl Reins {
             fail(code);
         }
         let owner = self.rein(id).owner.clone();
-        let chain = self.book(id, amount.0, at);
-        self.send(chain, owner, receiver, amount.0, memo, None)
+        let booking = self.book(id, amount.0, at);
+        self.send(booking, owner, receiver, amount.0, memo, None)
     }
 
     /// Ask the owner to approve a payment above the rein's approval threshold. The request is
@@ -74,6 +74,11 @@ impl Reins {
         if let Some(m) = &memo {
             require!(m.len() <= MAX_MEMO, "memo_too_long");
         }
+        // Approvals pay out of the vault; EVM reins pay from their derived address only.
+        require!(
+            self.rein(id).terms.evm_chain_id.is_none(),
+            "evm_rein_use_pay_evm"
+        );
         let at = now();
         match self.check(id, &receiver, amount.0, false, at) {
             Err(NEEDS_APPROVAL) => {}
@@ -139,7 +144,7 @@ impl Reins {
     #[private]
     pub fn on_paid(
         &mut self,
-        chain: Vec<ReinId>,
+        booking: Booking,
         owner: AccountId,
         receiver: AccountId,
         amount: U128,
@@ -147,9 +152,10 @@ impl Reins {
         request: Option<RequestId>,
     ) -> PromiseOrValue<bool> {
         let ok = near_sdk::is_promise_success();
-        let leaf = chain[0];
+        let leaf = booking.chain[0];
+        let chain = booking.chain.clone();
         if !ok {
-            self.unbook(&chain, &owner, amount.0);
+            self.unbook(&booking, &owner, amount.0);
             emit(
                 "payment_failed",
                 json!({ "rein_id": leaf, "owner": owner, "receiver": receiver,
@@ -168,11 +174,7 @@ impl Reins {
         self.set_vault(&owner, v.saturating_sub(cost));
         self.payments += 1;
         // `volume` is NEAR only; token payments are visible in their events.
-        if self
-            .reins
-            .get(&leaf)
-            .is_some_and(|r| r.terms.token.is_none())
-        {
+        if booking.token.is_none() {
             self.volume += amount.0;
         }
         emit(
