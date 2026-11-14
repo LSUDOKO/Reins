@@ -52,6 +52,8 @@ pub struct Rein {
     pub uses: u32,
     pub total_spent: U128,
     pub created_at: U64,
+    /// Open approval requests; capped so an agent cannot grow state without bound.
+    pub pending_requests: u8,
 }
 
 #[near(serializers = [borsh, json])]
@@ -60,6 +62,7 @@ pub enum RequestState {
     Pending,
     Approved,
     Rejected,
+    Expired,
 }
 
 /// A payment the agent asked the owner to approve because it was above the rein's threshold.
