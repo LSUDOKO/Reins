@@ -1,6 +1,6 @@
-# Report: reins-demo-drain.testnet
+# Report: reins-near-drain.testnet
 
-Reported by: reins-demo-shop.testnet
+Reported by: reins-near-shop.testnet
 Kind: phishing payout address
 
 This account was posted in a fake "API credits refund" page aimed at AI agents. The page hides
