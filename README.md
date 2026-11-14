@@ -4,7 +4,7 @@
 
 Built at NEAR HACKATHON (Nov 2026). Tracks: **AI Security & Defense** (`security`), **Agent Economy** (`agents`).
 Contract live on testnet: [`reins-near.testnet`](https://testnet.nearblocks.io/address/reins-near.testnet) ·
-Console: **[reins.adoranto737.workers.dev](https://reins.adoranto737.workers.dev)** (sign in with a NEAR testnet wallet — MyNearWallet, HOT, Intear, HERE or Sender — or open [`/app/?demo=1`](https://reins.adoranto737.workers.dev/app/?demo=1) to browse the demo owner read-only) ·
+Console: **[reins.adoranto737.workers.dev](https://reins.adoranto737.workers.dev)** (sign in with HOT, Intear, HERE or Sender, or click **Create a testnet demo account** for a one-click faucet account whose key stays in your tab — or open [`/app/?demo=1`](https://reins.adoranto737.workers.dev/app/?demo=1) to browse the demo owner read-only) ·
 API: [reins-api.adoranto737.workers.dev/health](https://reins-api.adoranto737.workers.dev/health)
 
 ![Reins landing](docs/screenshots/dashboard-landing.png)
@@ -201,6 +201,13 @@ There are deliberately no tools for withdraw, approve, freeze or allow. Recorded
 `packages/dashboard` (Next.js static export, NEAR Wallet Selector, Framer Motion), hosted as Cloudflare Workers static
 assets. Build: `bun run --cwd packages/dashboard build`; deploy: `bun run --cwd packages/dashboard deploy:cf`.
 Every console page asks for a NEAR wallet first; `?demo=1` opens the demo owner read-only.
+MyNearWallet is not offered: since 2026-11-01 it no longer approves app transactions. The one-click **testnet demo
+account** (faucet-funded, key kept in `sessionStorage`) is the fastest way to try the full owner flow.
+
+Checked in a real browser (headless Chromium against the console): create demo account → deposit 1 NEAR → wizard
+"0.5 NEAR a day, max 0.1 per payment" → create rein + agent key → `preview_pay` says "the contract would pay" → freeze →
+unfreeze; then that browser-made agent key paid through the MCP server
+([`HZi89SfS…`](https://testnet.nearblocks.io/txns/HZi89SfSqgfVpWcsT2YsBNeoZno96jEs9Tbc9rn2TZFT)).
 
 | Page | What it shows / does |
 | --- | --- |
@@ -212,7 +219,7 @@ Every console page asks for a NEAR wallet first; `?demo=1` opens the demo owner 
 | `/shop` | demo merchant: pays through a rein, or runs `preview_pay` with only a public key |
 | `/docs` | rules, error codes, MCP tools, events |
 
-Wallet-signed writes are wired to the same contract methods the CLI uses; the CLI and scripts are the tested path.
+
 
 ![Console](docs/screenshots/dashboard-app.png)
 ![Connect wizard](docs/screenshots/dashboard-connect.png)
