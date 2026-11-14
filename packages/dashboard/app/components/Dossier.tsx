@@ -142,7 +142,6 @@ export function Dossier({
 
             <Verbs
               card={card}
-              hasKids={kids.length > 0}
               wallet={wallet}
               canWrite={canWrite}
               refresh={refresh}
