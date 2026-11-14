@@ -4,9 +4,10 @@
 
 Built at NEAR HACKATHON (Nov 2026). Tracks: **AI Security & Defense** (`security`), **Agent Economy** (`agents`).
 Contract live on testnet: [`reins-near.testnet`](https://testnet.nearblocks.io/address/reins-near.testnet) ·
-Console: [lsudoko.github.io/Reins](https://lsudoko.github.io/Reins/) (read-only without a wallet; sign in with a NEAR testnet wallet to manage your own reins).
+Console: **[reins.adoranto737.workers.dev](https://reins.adoranto737.workers.dev)** (sign in with a NEAR testnet wallet — MyNearWallet, HOT, Intear, HERE or Sender — or open [`/app/?demo=1`](https://reins.adoranto737.workers.dev/app/?demo=1) to browse the demo owner read-only) ·
+API: [reins-api.adoranto737.workers.dev/health](https://reins-api.adoranto737.workers.dev/health)
 
-![Reins console](docs/screenshots/dashboard-app.png)
+![Reins landing](docs/screenshots/dashboard-landing.png)
 
 ---
 
@@ -197,7 +198,9 @@ There are deliberately no tools for withdraw, approve, freeze or allow. Recorded
 
 ## Web console
 
-`packages/dashboard` (Next.js static export, NEAR Wallet Selector). Build: `bun run --cwd packages/dashboard build`.
+`packages/dashboard` (Next.js static export, NEAR Wallet Selector, Framer Motion), hosted as Cloudflare Workers static
+assets. Build: `bun run --cwd packages/dashboard build`; deploy: `bun run --cwd packages/dashboard deploy:cf`.
+Every console page asks for a NEAR wallet first; `?demo=1` opens the demo owner read-only.
 
 | Page | What it shows / does |
 | --- | --- |
@@ -205,13 +208,14 @@ There are deliberately no tools for withdraw, approve, freeze or allow. Recorded
 | `/rein?id=N` | one rein: terms, spending, sub-reins, activity |
 | `/guard` | contract stats, counterparty check with blocklist evidence, the rule order, recorded transactions |
 | `/settings` | deposit / withdraw, pending approvals, blocklist overrides, each agent key's gas allowance |
-| `/connect` | MCP install command for a rein and the key's limits |
+| `/connect` | six-step wizard: describe the limit in plain English → review terms (NEAR, tUSD or Base Sepolia ETH; optional own sub-account) → create rein + agent key in one wallet approval → check the key on-chain → copy the Claude Code / Codex command → free `preview_pay` test |
 | `/shop` | demo merchant: pays through a rein, or runs `preview_pay` with only a public key |
 | `/docs` | rules, error codes, MCP tools, events |
 
 Wallet-signed writes are wired to the same contract methods the CLI uses; the CLI and scripts are the tested path.
 
-![Guard console](docs/screenshots/dashboard-guard.png)
+![Console](docs/screenshots/dashboard-app.png)
+![Connect wizard](docs/screenshots/dashboard-connect.png)
 
 ## Owner CLI
 
