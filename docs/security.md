@@ -36,3 +36,20 @@ revoked key is simply unknown even before the owner deletes it from the account.
 - Blocklist reports are not adjudicated. A bonded report blocks the account for every owner who has not allowed it.
 - Function-call key gas allowance can run out; the agent then stops (fails safe).
 - The contract has no upgrade governance beyond the contract account's own keys.
+
+## Chain Signatures payments
+
+The agent never supplies bytes to sign. `pay_evm` takes only `to`, `value`, `nonce` and fee caps; the contract builds the
+EIP-1559 transaction itself (fixed 21,000 gas, empty calldata, the rein's chain id), books `value + max_fee × 21000`
+against the rein, and only then calls `sign` on the MPC contract with the keccak hash. Consequences:
+
+- no calldata, so the derived address cannot be made to call a contract or approve a token;
+- the chain id is the rein's, so a signature cannot be replayed on another chain;
+- the fee is capped at 1000 gwei and counted in the budget, so fees cannot drain it;
+- a nonce can be signed only once (`nonce_already_used`); a failed MPC call restores budget and nonce.
+
+## Prompt-injection screening
+
+`guardedPay` and the MCP `pay` tool accept the text that led to a payment and send it to the Reins API, which runs Llama
+Prompt Guard 2. A score ≥ 0.5 refuses the payment before anything is signed. If the API is unreachable the screen is
+reported as unavailable and does not decide the payment either way; the contract's limits still apply.
