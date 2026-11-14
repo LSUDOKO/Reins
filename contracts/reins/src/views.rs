@@ -6,6 +6,7 @@ pub struct Stats {
     pub requests: u64,
     pub payments: u64,
     pub volume: U128,
+    pub evm_signatures: u64,
 }
 
 #[near]
@@ -21,14 +22,23 @@ impl Reins {
             .unwrap_or_default()
     }
 
-    pub fn rein_for_key(&self, owner: AccountId, public_key: PublicKey) -> Option<Rein> {
+    /// `account` is the account holding the key: the owner, or the rein's named sub-account.
+    pub fn rein_for_key(&self, account: AccountId, public_key: PublicKey) -> Option<Rein> {
         self.key_index
-            .get(&key_of(&owner, &public_key))
+            .get(&key_of(&account, &public_key))
             .and_then(|id| self.reins.get(id).cloned())
     }
 
     pub fn vault_of(&self, owner: AccountId) -> U128 {
         U128(self.vault(&owner))
+    }
+
+    pub fn token_vault_of(&self, owner: AccountId, token: AccountId) -> U128 {
+        U128(self.vault_in(&owner, &Some(token)))
+    }
+
+    pub fn mpc_contract(&self) -> AccountId {
+        self.mpc.clone()
     }
 
     pub fn get_request(&self, id: RequestId) -> Option<PayRequest> {
@@ -61,12 +71,15 @@ impl Reins {
     }
 
     /// What `pay` would do right now for this key, without doing it.
+    /// `owner` is the account holding the key (the owner, or the rein's named sub-account).
     pub fn preview_pay(&self, owner: AccountId, public_key: PublicKey, receiver: AccountId, amount: U128) -> Preview {
-        let vault = U128(self.vault(&owner));
         let Some(id) = self.key_index.get(&key_of(&owner, &public_key)).copied() else {
+            let vault = U128(self.vault(&owner));
             return Preview { ok: false, code: Some(errors::UNKNOWN_KEY.into()), needs_approval: false,
                              rein_id: None, remaining: U128(0), vault };
         };
+        let leaf = self.rein(id);
+        let vault = U128(self.vault_in(&leaf.owner, &leaf.terms.token));
         let at = now();
         let remaining = U128(self.chain(id).iter().map(|r| crate::remaining(self.rein(*r), at)).min().unwrap_or(0));
         match self.check(id, &receiver, amount.0, false, at) {
@@ -82,6 +95,7 @@ impl Reins {
             requests: self.next_request - 1,
             payments: self.payments,
             volume: U128(self.volume),
+            evm_signatures: self.evm_signatures,
         }
     }
 
