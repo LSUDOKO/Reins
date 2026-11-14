@@ -38,6 +38,12 @@ impl Reins {
         if let Some(exp) = terms.expires_at {
             require!(exp.0.saturating_mul(1_000_000_000) > now(), "expiry_in_the_past");
         }
+        if terms.evm_chain_id.is_some() {
+            require!(terms.token.is_none(), "evm_rein_cannot_have_token");
+            if let Some(m) = &terms.merchants {
+                require!(m.iter().all(|a| crate::evm::is_evm_address(a.as_str())), "evm_merchants_must_be_0x_addresses");
+            }
+        }
     }
 
     /// Shared by the owner's `create_rein` and the agent's `issue_subrein`.
@@ -48,10 +54,16 @@ impl Reins {
         label: String,
         terms: Terms,
         parent: Option<ReinId>,
+        agent_account: Option<AccountId>,
     ) -> ReinId {
         require!(label.len() <= MAX_LABEL, "label_too_long");
         Self::validate_terms(&terms);
-        let k = key_of(owner, &agent_key);
+        let holder = agent_account.unwrap_or_else(|| owner.clone());
+        require!(
+            &holder == owner || holder.as_str().ends_with(&format!(".{owner}")),
+            "agent_account_must_be_owner_or_its_sub_account"
+        );
+        let k = key_of(&holder, &agent_key);
         require!(!self.key_index.contains_key(&k), "key_already_bound");
         let live = self
             .owner_reins
@@ -67,6 +79,7 @@ impl Reins {
             require!(p.children.len() < MAX_CHILDREN, "too_many_children");
             require!(terms.budget.0 <= p.terms.budget.0, "child_budget_above_parent");
             require!(terms.per_tx_cap.0 <= p.terms.per_tx_cap.0, "child_cap_above_parent");
+            require!(terms.token == p.terms.token && terms.evm_chain_id == p.terms.evm_chain_id, "child_must_use_parent_currency");
         }
 
         let id = self.next_rein;
@@ -74,6 +87,7 @@ impl Reins {
         let rein = Rein {
             id,
             owner: owner.clone(),
+            agent_account: holder.clone(),
             agent_key: agent_key.clone(),
             label: label.clone(),
             parent,
@@ -86,6 +100,7 @@ impl Reins {
             total_spent: u128s(0),
             created_at: u64s(now()),
             pending_requests: 0,
+            evm_nonce: U64(0),
         };
         self.reins.insert(id, rein);
         self.key_index.insert(k, id);
@@ -95,7 +110,7 @@ impl Reins {
         }
         emit(
             "rein_created",
-            json!({ "rein_id": id, "owner": owner, "agent_key": agent_key, "label": label,
+            json!({ "rein_id": id, "owner": owner, "agent_account": holder, "agent_key": agent_key, "label": label,
                     "parent": parent, "terms": terms }),
         );
         id
@@ -110,7 +125,7 @@ impl Reins {
                 continue;
             }
             if status == Status::Revoked {
-                let k = key_of(&r.owner, &r.agent_key);
+                let k = key_of(&r.agent_account, &r.agent_key);
                 r.status = Status::Revoked;
                 stack.extend(r.children.iter().copied());
                 self.key_index.remove(&k);
@@ -124,8 +139,12 @@ impl Reins {
 
     pub(crate) fn send(&mut self, chain: Vec<ReinId>, owner: AccountId, receiver: AccountId,
                        amount: u128, memo: Option<String>, request: Option<RequestId>) -> Promise {
-        Promise::new(receiver.clone())
-            .transfer(NearToken::from_yoctonear(amount))
+        let token = self.rein(chain[0]).terms.token.clone();
+        let transfer = match token {
+            None => Promise::new(receiver.clone()).transfer(NearToken::from_yoctonear(amount)),
+            Some(t) => crate::tokens::ft_transfer(t, receiver.clone(), amount, memo.clone()),
+        };
+        transfer
             .then(
                 Self::ext(env::current_account_id())
                     .with_static_gas(CALLBACK_GAS)
@@ -160,20 +179,23 @@ impl Reins {
     /// the rest stays in the vault. Then add the key to your account as a function-call key
     /// for this contract with methods `pay`, `request_approval`, `issue_subrein`.
     #[payable]
-    pub fn create_rein(&mut self, agent_key: PublicKey, label: String, terms: Terms) -> ReinId {
+    ///
+    /// `agent_account`: optional named sub-account of yours (e.g. `research.you.testnet`) that
+    /// will hold the agent key instead of your own account.
+    pub fn create_rein(&mut self, agent_key: PublicKey, label: String, terms: Terms, agent_account: Option<AccountId>) -> ReinId {
         let owner = full_access_owner(self);
         let before = self.usage();
-        let id = self.insert_rein(&owner, agent_key, label, terms, None);
+        let id = self.insert_rein(&owner, agent_key, label, terms, None, agent_account);
         self.charge_storage(&owner, before);
         id
     }
 
     /// Owner-created sub-rein for a sub-agent. Its spending also counts against every ancestor.
     #[payable]
-    pub fn create_subrein(&mut self, parent: ReinId, agent_key: PublicKey, label: String, terms: Terms) -> ReinId {
+    pub fn create_subrein(&mut self, parent: ReinId, agent_key: PublicKey, label: String, terms: Terms, agent_account: Option<AccountId>) -> ReinId {
         let owner = full_access_owner(self);
         let before = self.usage();
-        let id = self.insert_rein(&owner, agent_key, label, terms, Some(parent));
+        let id = self.insert_rein(&owner, agent_key, label, terms, Some(parent), agent_account);
         self.charge_storage(&owner, before);
         id
     }
