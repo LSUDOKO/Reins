@@ -35,17 +35,19 @@ export default function SettingsPage() {
 
   if (!wallet.ready) return <main className="narrow">Loading…</main>;
   if (!owner) {
+    // Signed out: the gate shows the sign-in screen; in demo mode, say why there is nothing here.
     return (
-      <main className="narrow">
-        <div className="panel">
-          <p className="subnote">
-            Settings act on your own reins.{" "}
-            <button className="acretry" onClick={wallet.signIn}>
-              Sign in with NEAR
-            </button>
+      <Cockpit back={{ href: "/app", label: "Dashboard" }} wallet={wallet} refresh={refresh} onLogout={() => void wallet.signOut()}>
+        <section className="panel" style={{ padding: 24, marginTop: 16 }}>
+          <h2 style={{ fontSize: 24 }}>Settings need your wallet</h2>
+          <p style={{ marginTop: 8, lineHeight: 1.6, maxWidth: 560 }}>
+            Your vault, pending approvals, blocklist overrides and the panic button all act on your own account, so they open once you sign in.
           </p>
-        </div>
-      </main>
+          <button className="primary" style={{ marginTop: 14 }} onClick={wallet.signIn}>
+            Sign in
+          </button>
+        </section>
+      </Cockpit>
     );
   }
 
