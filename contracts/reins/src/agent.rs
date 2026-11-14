@@ -10,11 +10,11 @@ impl Reins {
     /// The rein bound to the key that signed this call. Rejects calls relayed through
     /// another contract, so the signing key is always the owner's own access key.
     pub(crate) fn caller_rein(&self) -> ReinId {
-        let owner = env::predecessor_account_id();
-        if env::signer_account_id() != owner {
+        let holder = env::predecessor_account_id();
+        if env::signer_account_id() != holder {
             fail(RELAYED);
         }
-        let k = key_of(&owner, &env::signer_account_pk());
+        let k = key_of(&holder, &env::signer_account_pk());
         *self.key_index.get(&k).unwrap_or_else(|| fail(UNKNOWN_KEY))
     }
 
@@ -48,6 +48,7 @@ impl Reins {
         if let Some(m) = &memo {
             require!(m.len() <= MAX_MEMO, "memo_too_long");
         }
+        require!(self.rein(id).terms.evm_chain_id.is_none(), "evm_rein_use_pay_evm");
         let at = now();
         if let Err(code) = self.check(id, &receiver, amount.0, false, at) {
             fail(code);
@@ -107,7 +108,8 @@ impl Reins {
         let parent = self.caller_rein();
         let owner = self.rein(parent).owner.clone();
         let before = self.usage();
-        let id = self.insert_rein(&owner, agent_key, label, terms, Some(parent));
+        // A sub-agent's key lives on the owner's account unless the owner moves it.
+        let id = self.insert_rein(&owner, agent_key, label, terms, Some(parent), None);
         self.charge_storage(&owner, before);
         id
     }
