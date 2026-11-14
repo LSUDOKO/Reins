@@ -184,9 +184,9 @@ export function Landing() {
         <div className="lpsplit rev" style={{ marginTop: 32 }}>
           <div>
             <pre className="lpcode">{`# the agent's key is shown once, when you create the rein
-claude mcp add reins \
-  -e REINS_OWNER=you.testnet \
-  -e `}<span className="y">REINS_AGENT_KEY=ed25519:&lt;agent-secret&gt;</span>{` \
+claude mcp add reins \\
+  -e REINS_OWNER=you.testnet \\
+  -e `}<span className="y">REINS_AGENT_KEY=ed25519:&lt;agent-secret&gt;</span>{` \\
   -- bun run Reins/packages/mcp/src/index.ts
 `}<span className="c"># tools: rein_status, check_counterparty, preview_payment,
 # pay, approval_status, issue_subrein, quote_cross_chain</span></pre>
