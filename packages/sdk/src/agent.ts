@@ -14,6 +14,7 @@ import type { Assessment } from "./policy";
 import type { Preview, Rein, Terms } from "./types";
 import { toYocto } from "./units";
 import { sendCall, type TxResult } from "./tx";
+import { screenText } from "./screen";
 
 export { panicOf, parseEvents, type ChainEvent, type TxResult } from "./tx";
 
@@ -75,8 +76,21 @@ export class AgentClient {
     /** Called on a `warn` verdict. Return true to pay anyway. Without it, warn = refuse. */
     askHuman?: (a: Assessment, preview: Preview) => Promise<boolean>;
     counterparty?: CounterpartyOptions;
+    /** The text that led to this payment (page, email, tool output). Screened for prompt injection. */
+    context?: string;
+    /** Override the screening call, e.g. in tests. */
+    screen?: typeof screenText;
   }): Promise<PayOutcome> {
     const assessment = await this.assess(p.receiver, p.counterparty);
+    if (p.context) {
+      const s = await (p.screen ?? screenText)(p.context);
+      if (s === null) assessment.reasons.push({ signal: "injection", level: "info", detail: "prompt-injection screen unavailable" });
+      else if (s.injection) {
+        assessment.reasons.push({ signal: "injection", level: "block", detail: `the text behind this payment looks like a prompt injection (score ${s.score.toFixed(3)})` });
+        assessment.verdict = "block";
+        return { status: "refused", by: "guard", code: "prompt_injection_detected", assessment };
+      } else assessment.reasons.push({ signal: "injection", level: "info", detail: `no prompt injection found (score ${s.score.toFixed(3)})` });
+    }
     if (assessment.verdict === "block") {
       return { status: "refused", by: "guard", code: "counterparty_blocked", assessment };
     }
