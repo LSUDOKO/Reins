@@ -1,7 +1,7 @@
 "use client";
 
 // Boot: the loading layer. The wordmark rises in once; the seal ring beneath
-// it draws with REAL boot progress (Privy init -> wallet -> probe), closing
+// it draws with REAL boot progress (wallet init -> contract read), closing
 // exactly when the app is ready. The layer then blurs out over the already-
 // mounted screen underneath - a handoff, not a swap. Same seal vocabulary as
 // a live card's status glyph: boot finishes when the seal closes.
@@ -32,7 +32,7 @@ export function Boot({
         animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
         transition={{ type: "spring", stiffness: 90, damping: 20 }}
       >
-        KeeperCard
+        Reins
       </motion.span>
       <motion.svg
         className="bootseal"
