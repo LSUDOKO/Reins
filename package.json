@@ -15,5 +15,10 @@
   "dependencies": {
     "@reins/sdk": "workspace:*",
     "near-api-js": "^7.5.3"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "bun-types": "^1.4.4",
+    "typescript": "^7.0.2"
   }
 }
