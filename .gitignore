@@ -12,3 +12,4 @@ dist/
 !demo/logs/*.log
 .playwright-mcp/
 web/receipts.json
+.playwright-mcp/
