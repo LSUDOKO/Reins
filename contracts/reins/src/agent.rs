@@ -143,7 +143,10 @@ impl Reins {
         let v = self.vault(&owner);
         self.set_vault(&owner, v.saturating_sub(cost));
         self.payments += 1;
-        self.volume += amount.0;
+        // `volume` is NEAR only; token payments are visible in their events.
+        if self.reins.get(&leaf).is_some_and(|r| r.terms.token.is_none()) {
+            self.volume += amount.0;
+        }
         emit("payment", json!({ "rein_id": leaf, "chain": chain, "owner": owner, "receiver": receiver,
                                 "amount": amount, "memo": memo, "request_id": request, "pair_count": n }));
         PromiseOrValue::Value(true)
