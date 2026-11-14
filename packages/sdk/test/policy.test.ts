@@ -30,8 +30,9 @@ test("a named account that does not exist is blocked", () => {
   expect(assess({ ...base, exists: false, ageDays: 0 }).verdict).toBe("block");
 });
 
-test("a young account warns", () => {
+test("a young account warns unless the owner allowlisted it", () => {
   expect(assess({ ...base, ageDays: 1 }).verdict).toBe("warn");
+  expect(assess({ ...base, ageDays: 1, allowlisted: true }).verdict).toBe("allow");
 });
 
 test("a first payment warns unless allowlisted", () => {

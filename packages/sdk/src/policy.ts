@@ -106,7 +106,8 @@ export function assess(s: Signals): Assessment {
   if (s.ageDays === null) {
     add("age", "info", "account age unavailable");
   } else if (s.ageDays < YOUNG_ACCOUNT_DAYS) {
-    add("age", "warn", `account is ${s.ageDays.toFixed(1)} days old`);
+    // An owner who put the account on the rein's merchant list already vouched for it.
+    add("age", s.allowlisted ? "info" : "warn", `account is ${s.ageDays.toFixed(1)} days old`);
   } else {
     add("age", "info", `account is ${Math.floor(s.ageDays)} days old`);
   }
