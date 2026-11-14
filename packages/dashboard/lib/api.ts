@@ -2,6 +2,7 @@
 // public RPC (no server, no keys). Reins arrive in the console's card shape so the
 // deck, the term sheet and the sub-rein rows render them unchanged.
 
+import { currencyOf, fromUnits, type Currency, type TermsV2 } from "./currency";
 import { ReinsClient, checkCounterparty, fromYocto, panicOf, parseEvents, type Assessment, type PayRequest, type Rein, type Report, type Stats } from "@reins/sdk";
 import { BASE_PATH, CONTRACT_ID, RPC_URL } from "./chain";
 
@@ -35,6 +36,12 @@ export type CardState = {
   uses: number;
   total_spent: string;
   raw: Rein;
+  /** NEAR, tUSD (NEP-141) or ETH (Base Sepolia via Chain Signatures). */
+  currency: Currency;
+  /** Prefix for amounts: "Ⓝ", "tUSD " or "Ξ". */
+  sym: string;
+  /** Account that holds the agent key: the owner or a named sub-account of it. */
+  agent_account: string;
 };
 
 export type TreeNode = { card: CardState; children: TreeNode[] };
@@ -54,7 +61,11 @@ export type Charge = {
 
 const NS = 1_000_000_000;
 
+export const SYM: Record<Currency, string> = { NEAR: "Ⓝ", tUSD: "tUSD ", ETH: "Ξ" };
+
 export function toCard(r: Rein): CardState {
+  const c = currencyOf(r.terms as TermsV2);
+  const fromYocto = (v: string | bigint, d: number) => fromUnits(v, c, d);
   const period = Number(r.terms.period_secs);
   const budget = fromYocto(r.terms.budget, 6);
   const windowStart = Number(r.window_start) / NS;
@@ -87,6 +98,9 @@ export function toCard(r: Rein): CardState {
     uses: r.uses,
     total_spent: fromYocto(r.total_spent, 6),
     raw: r,
+    currency: c,
+    sym: SYM[c],
+    agent_account: (r as Rein & { agent_account?: string }).agent_account ?? r.owner,
   };
 }
 
