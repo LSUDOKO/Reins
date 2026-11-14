@@ -43,7 +43,8 @@ export function buildServer(cfg: Config) {
   }, async () => {
     const rein = await agent.rein();
     if (!rein) return text({ error: "unknown_key", hint: "This key is not bound to a rein (revoked, or wrong REINS_OWNER)." });
-    const [vault, pending] = await Promise.all([reins.vaultOf(cfg.owner), reins.pendingRequestsOf(cfg.owner)]);
+    const [vault, pending, allowance] = await Promise.all([
+      reins.vaultOf(cfg.owner), reins.pendingRequestsOf(cfg.owner), reins.keyAllowance(cfg.owner, agent.publicKey).catch(() => null)]);
     const t = rein.terms;
     return text({
       rein_id: rein.id, label: rein.label, status: rein.status, owner: rein.owner, contract,
@@ -51,7 +52,9 @@ export function buildServer(cfg: Config) {
       per_payment_cap_near: fromYocto(t.per_tx_cap), approval_above_near: t.approval_above ? fromYocto(t.approval_above) : null,
       merchants: t.merchants ?? "any", uses: rein.uses, max_uses: t.max_uses ?? null,
       expires_at: t.expires_at ? new Date(Number(t.expires_at) * 1000).toISOString() : null,
-      vault_near: fromYocto(vault), pending_requests: pending.filter((r) => r.rein_id === rein.id),
+      vault_near: fromYocto(vault),
+      gas_allowance_near: allowance && /^\d+$/.test(allowance) ? fromYocto(allowance) : allowance,
+      pending_requests: pending.filter((r) => r.rein_id === rein.id),
     });
   });
 
