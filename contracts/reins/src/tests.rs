@@ -111,6 +111,17 @@ fn pay(c: &mut Reins, k: u8, to: AccountId, amount: u128, at: u64) {
     let _ = c.pay(to, U128(amount), None);
 }
 
+/// The booking `book` produced for a single-rein payment made in the rein's current window.
+fn bk(c: &Reins, id: ReinId) -> Booking {
+    let r = c.get_rein(id).unwrap();
+    Booking {
+        chain: vec![id],
+        windows: vec![r.window_start],
+        token: r.terms.token.clone(),
+        evm: r.terms.evm_chain_id.is_some(),
+    }
+}
+
 fn spent(c: &Reins, id: ReinId) -> u128 {
     c.get_rein(id).unwrap().spent.0
 }
@@ -297,8 +308,8 @@ fn unfreeze_restores_spending() {
 }
 
 #[test]
-#[should_panic(expected = "unknown_key")]
-fn revoked_key_becomes_unknown() {
+#[should_panic(expected = "rein_not_active")]
+fn revoked_key_cannot_pay() {
     let mut c = setup();
     as_owner(1, T0);
     c.revoke(1);
@@ -454,7 +465,10 @@ fn revoking_a_parent_revokes_the_subtree() {
     as_owner(1, T0);
     c.revoke(1);
     assert_eq!(c.get_rein(child).unwrap().status, Status::Revoked);
-    assert!(c.rein_for_key(owner(), pk(2)).is_none());
+    assert_eq!(
+        c.rein_for_key(owner(), pk(2)).unwrap().status,
+        Status::Revoked
+    );
 }
 
 #[test]
@@ -550,7 +564,7 @@ fn failed_transfer_restores_budget_and_vault() {
     pay(&mut c, 1, acc("ghost.testnet"), NEAR / 4, T0);
     callback(PromiseResult::Failed, T0);
     let ok = c.on_paid(
-        vec![1],
+        bk(&c, 1),
         owner(),
         acc("ghost.testnet"),
         U128(NEAR / 4),
@@ -568,7 +582,7 @@ fn settled_transfer_counts_the_pair() {
     let mut c = setup();
     pay(&mut c, 1, shop(), NEAR / 4, T0);
     callback(PromiseResult::Successful(vec![]), T0);
-    let _ = c.on_paid(vec![1], owner(), shop(), U128(NEAR / 4), None, None);
+    let _ = c.on_paid(bk(&c, 1), owner(), shop(), U128(NEAR / 4), None, None);
     assert_eq!(c.pair_count(owner(), shop()), 1);
     assert_eq!(c.stats().payments, 1);
 }
@@ -661,6 +675,8 @@ fn usd() -> AccountId {
 
 fn token_rein() -> Reins {
     let mut c = setup();
+    as_owner(NEAR / 100, T0);
+    c.register_token(usd());
     let mut ctx = VMContextBuilder::new();
     ctx.current_account_id(contract_id())
         .predecessor_account_id(usd())
@@ -696,7 +712,7 @@ fn failed_token_transfer_restores_the_token_vault() {
     pay(&mut c, 3, shop(), 2_000_000, T0);
     callback(PromiseResult::Failed, T0);
     let id = c.rein_for_key(owner(), pk(3)).unwrap().id;
-    let _ = c.on_paid(vec![id], owner(), shop(), U128(2_000_000), None, None);
+    let _ = c.on_paid(bk(&c, id), owner(), shop(), U128(2_000_000), None, None);
     assert_eq!(c.token_vault_of(owner(), usd()).0, 50_000_000);
 }
 
@@ -786,7 +802,7 @@ fn evm_payment_respects_the_cap() {
 }
 
 #[test]
-#[should_panic(expected = "nonce_already_used")]
+#[should_panic(expected = "wrong_nonce")]
 fn evm_nonce_cannot_be_reused() {
     let mut c = evm_rein();
     as_agent(4, T0);
@@ -850,7 +866,8 @@ fn failed_signature_restores_budget_and_nonce() {
     callback(PromiseResult::Failed, T0);
     let cost = ETH / 1000 + GWEI * 21_000;
     let _ = c.on_signed(
-        vec![id],
+        bk(&c, id),
+        U64(0),
         owner(),
         MERCHANT_EVM.into(),
         U128(cost),
@@ -859,4 +876,183 @@ fn failed_signature_restores_budget_and_nonce() {
     let r = c.get_rein(id).unwrap();
     assert_eq!(r.spent.0, 0);
     assert_eq!(r.evm_nonce.0, 0);
+}
+
+// ---- regression tests for the internal audit (SECURITY.md) ---------------------------
+
+#[test]
+#[should_panic(expected = "evm_rein_use_pay_evm")]
+fn audit_c1_evm_rein_cannot_request_a_near_approval() {
+    let mut c = setup();
+    let mut t = terms(ETH / 100, ETH / 200);
+    t.evm_chain_id = Some(U64(1));
+    t.approval_above = Some(U128(0));
+    as_owner(NEAR / 10, T0);
+    c.create_rein(pk(4), "evm".into(), t, None);
+    as_agent(4, T0);
+    c.request_approval(shop(), U128(NEAR), None);
+}
+
+#[test]
+#[should_panic(expected = "currency_immutable")]
+fn audit_c2_rein_currency_cannot_change() {
+    let mut c = token_rein();
+    let id = c.rein_for_key(owner(), pk(3)).unwrap().id;
+    as_owner(1, T0);
+    c.update_terms(id, terms(10_000_000, 5_000_000));
+}
+
+#[test]
+fn audit_c2_refund_goes_to_the_booked_currency() {
+    let mut c = token_rein();
+    let id = c.rein_for_key(owner(), pk(3)).unwrap().id;
+    let near_before = c.vault_of(owner()).0;
+    pay(&mut c, 3, shop(), 2_000_000, T0);
+    let booking = bk(&c, id);
+    callback(PromiseResult::Failed, T0);
+    let _ = c.on_paid(booking, owner(), shop(), U128(2_000_000), None, None);
+    assert_eq!(c.token_vault_of(owner(), usd()).0, 50_000_000);
+    assert_eq!(
+        c.vault_of(owner()).0,
+        near_before,
+        "a token refund must never credit NEAR"
+    );
+}
+
+#[test]
+fn audit_h1_unregistered_token_deposit_is_refunded_without_state() {
+    let mut c = setup();
+    let mut ctx = VMContextBuilder::new();
+    ctx.current_account_id(contract_id())
+        .predecessor_account_id(acc("fake.testnet"))
+        .signer_account_id(scam());
+    testing_env!(ctx.build());
+    let before = env::storage_usage();
+    let refund = c.ft_on_transfer(scam(), U128(1_000), String::new());
+    assert!(matches!(
+        refund,
+        near_sdk::PromiseOrValue::Value(U128(1_000))
+    ));
+    assert_eq!(c.token_vault_of(scam(), acc("fake.testnet")).0, 0);
+    assert_eq!(
+        c.usage(),
+        before,
+        "no storage written for an unregistered token"
+    );
+}
+
+#[test]
+#[should_panic(expected = "zero_amount")]
+fn audit_h1_zero_token_deposit_is_rejected() {
+    let mut c = token_rein();
+    let mut ctx = VMContextBuilder::new();
+    ctx.current_account_id(contract_id())
+        .predecessor_account_id(usd())
+        .signer_account_id(owner());
+    testing_env!(ctx.build());
+    let _ = c.ft_on_transfer(owner(), U128(0), String::new());
+}
+
+#[test]
+fn audit_m1_refund_does_not_top_up_a_newer_window() {
+    let mut c = setup();
+    pay(&mut c, 1, acc("ghost.testnet"), NEAR / 2, T0);
+    let stale = bk(&c, 1);
+    // A new window opens and the agent spends in it before the old payment fails.
+    let next = T0 + 86_400 * SEC + 1;
+    pay(&mut c, 1, shop(), NEAR / 2, next);
+    callback(PromiseResult::Failed, next);
+    let _ = c.on_paid(
+        stale,
+        owner(),
+        acc("ghost.testnet"),
+        U128(NEAR / 2),
+        None,
+        None,
+    );
+    assert_eq!(
+        spent(&c, 1),
+        NEAR / 2,
+        "the new window keeps its own spending"
+    );
+}
+
+#[test]
+#[should_panic(expected = "wrong_nonce")]
+fn audit_m2_evm_nonce_must_be_the_next_one() {
+    let mut c = evm_rein();
+    as_agent(4, T0);
+    let _ = c.pay_evm(
+        MERCHANT_EVM.into(),
+        U128(1),
+        U64(1u64 << 62),
+        U128(GWEI),
+        U128(GWEI),
+    );
+}
+
+#[test]
+fn audit_m2_owner_can_reset_the_evm_nonce() {
+    let mut c = evm_rein();
+    let id = c.rein_for_key(owner(), pk(4)).unwrap().id;
+    as_owner(1, T0);
+    c.reset_evm_nonce(id, U64(7));
+    assert_eq!(c.get_rein(id).unwrap().evm_nonce.0, 7);
+}
+
+#[test]
+fn audit_m2_late_failure_does_not_rewind_a_newer_nonce() {
+    let mut c = evm_rein();
+    let id = c.rein_for_key(owner(), pk(4)).unwrap().id;
+    as_agent(4, T0);
+    let _ = c.pay_evm(MERCHANT_EVM.into(), U128(1), U64(0), U128(GWEI), U128(GWEI));
+    let first = bk(&c, id);
+    as_agent(4, T0);
+    let _ = c.pay_evm(MERCHANT_EVM.into(), U128(1), U64(1), U128(GWEI), U128(GWEI));
+    callback(PromiseResult::Failed, T0);
+    let _ = c.on_signed(
+        first,
+        U64(0),
+        owner(),
+        MERCHANT_EVM.into(),
+        U128(1 + GWEI * 21_000),
+        near_sdk::serde_json::json!({}),
+    );
+    assert_eq!(
+        c.get_rein(id).unwrap().evm_nonce.0,
+        2,
+        "nonce 1 was signed, so 0 must not be reusable"
+    );
+}
+
+#[test]
+#[should_panic(expected = "needs_approval")]
+fn audit_l1_parent_approval_threshold_binds_children() {
+    let mut c = with_approvals();
+    as_agent(1, T0);
+    c.issue_subrein(pk(2), "sub".into(), terms(NEAR / 2, NEAR / 2));
+    pay(&mut c, 2, shop(), NEAR / 3, T0);
+}
+
+#[test]
+fn audit_l3_freeze_applies_to_the_subtree() {
+    let mut c = setup();
+    as_agent(1, T0);
+    let child = c.issue_subrein(pk(2), "sub".into(), terms(NEAR / 2, NEAR / 4));
+    as_owner(1, T0);
+    c.freeze(1);
+    assert_eq!(c.get_rein(child).unwrap().status, Status::Frozen);
+    as_owner(1, T0);
+    c.unfreeze(1);
+    assert_eq!(c.get_rein(child).unwrap().status, Status::Active);
+}
+
+#[test]
+#[should_panic(expected = "key_already_bound")]
+fn audit_l4_revoked_key_cannot_be_bound_again() {
+    let mut c = setup();
+    as_owner(1, T0);
+    c.revoke(1);
+    as_owner(NEAR / 10, T0);
+    c.create_rein(pk(1), "again".into(), terms(NEAR, NEAR / 2), None);
 }
