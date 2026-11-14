@@ -6,7 +6,7 @@
   "compatibility_flags": ["nodejs_compat"],
   // GROQ_API_KEY is a secret: `wrangler secret put GROQ_API_KEY`. Never in this file.
   "vars": {
-    "ALLOWED_ORIGINS": "https://reins.pages.dev,http://localhost:3000,http://localhost:4071",
+    "ALLOWED_ORIGINS": "https://reins.adoranto737.workers.dev,https://reins.pages.dev,http://localhost:3000,http://localhost:4071",
     "GROQ_MODEL": "openai/gpt-oss-120b",
     "GUARD_MODEL": "meta-llama/llama-prompt-guard-2-86m"
   }
