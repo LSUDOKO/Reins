@@ -1,0 +1,21 @@
+<!doctype html><html><head><link rel="stylesheet" href="_base.css"><style>
+body{width:1600px;height:900px;padding:60px 70px;position:relative;color:var(--cream)}
+h2{font-size:92px;color:var(--lime)}
+.lead{font-size:22px;margin:18px 0 44px;color:var(--sage);max-width:1100px;line-height:1.45}
+.row{display:grid;grid-template-columns:repeat(4,1fr);gap:26px}
+.card{background:var(--cream);color:var(--ink);border-radius:26px;padding:30px 28px;position:relative;min-height:470px}
+.n{font-size:64px;color:var(--lime);-webkit-text-stroke:2px var(--ink)}
+.ic{width:120px;height:90px;margin:12px 0 10px}
+.ic svg{width:100%;height:100%}
+h3{font-size:34px;margin-bottom:14px}
+p{font-size:19px;line-height:1.45;font-weight:500}
+code{font-family:ui-monospace,monospace;font-size:16px;background:#dfe6c6;padding:1px 6px;border-radius:6px}
+</style></head><body class="grain">
+<h2 class="display">How Reins works</h2>
+<div class="lead">The owner's money sits in a NEAR contract vault. Each agent gets a <b>rein</b>: rules bound to one public key that the owner adds as a function-call access key. Every payment is checked by the contract before anything moves.</div>
+<div class="row">
+<div class='card'><div class='n display'>1</div><div class='ic'><svg class="d" viewBox="0 0 56 56"><ellipse cx="28" cy="28" rx="22" ry="21"/><ellipse cx="28" cy="28" rx="15" ry="14"/><path d="M23 34V22l10 12V22"/></svg></div><h3 class='display'>Fund the vault</h3><p>Deposit NEAR, or tUSD with <code>ft_transfer_call</code>. Only your full-access key can withdraw.</p></div>
+<div class='card'><div class='n display'>2</div><div class='ic'><svg class="d" viewBox="0 0 90 45"><circle cx="18" cy="22" r="12"/><circle cx="18" cy="22" r="4"/><path d="M30 22h52M70 22v10M78 22v7"/></svg></div><h3 class='display'>Hand a key</h3><p>Describe the limit in plain English. Reins creates the rein and adds a function-call key that can call only <code>pay</code>, <code>pay_evm</code>, <code>request_approval</code>, <code>issue_subrein</code>.</p></div>
+<div class='card'><div class='n display'>3</div><div class='ic'><svg class="d" viewBox="0 0 110 110"><rect x="24" y="30" width="62" height="48" rx="16"/><path d="M55 30V16"/><circle cx="55" cy="12" r="4"/><circle cx="42" cy="52" r="5"/><circle cx="68" cy="52" r="5"/><path d="M44 66c7 5 15 5 22 0"/><path d="M24 54h-8M86 54h8M40 78v12M70 78v12M34 92h14M64 92h14"/></svg></div><h3 class='display'>Agent pays</h3><p>Claude, Codex or any MCP agent calls <code>pay</code>. The guard screens the receiver and the prompt; the contract checks budget, cap, merchants, blocklist and expiry along the whole rein tree.</p></div>
+<div class='card'><div class='n display'>4</div><div class='ic'><svg class="d" viewBox="0 0 80 80"><path d="M40 8c10 6 20 8 30 8 0 26-8 46-30 56C18 62 10 42 10 16c10 0 20-2 30-8Z"/><path d="M27 40l9 9 17-19"/></svg></div><h3 class='display'>You stay in charge</h3><p>Big payments wait for your approval. Freeze or revoke in one click. On other chains, NEAR Chain Signatures sign only what the rein allows.</p></div>
+</div></body></html>
