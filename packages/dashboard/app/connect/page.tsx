@@ -1,20 +1,22 @@
 "use client";
 
-// /connect: the OAuth consent page (THE card picker). The API's /authorize endpoint
-// 302s the agent's browser here with ?request=<id>; the user signs in with the
-// EXISTING Privy session, picks WHICH card to grant, and we bounce back to the
-// client's redirect_uri with the authorization code. The agent ends up holding a
-// short-lived card-scoped token, never a raw card secret.
+// /connect: connect an agent to a rein. Pick the rein, paste the agent secret you
+// were shown when you created it (it stays in this tab: it is only used to derive
+// the public key and fill in the command), and copy the MCP install command. The
+// panel also spells out what the key can and cannot do, because that is the whole
+// security model.
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { KeyPair, type KeyPairString } from "near-api-js";
 import { api, type CardState } from "@/lib/api";
-import { CopyButton } from "../components/Authority";
+import { AGENT_ALLOWANCE_NEAR, AGENT_METHODS, CONTRACT_ID, DEMO_OWNER } from "@/lib/chain";
+import { useWallet } from "@/lib/near";
+import { CopyButton, mcpCommands } from "../components/Authority";
 import { capWord, IconCheck } from "../components/ui";
-import { useRemit } from "../useRemit";
 
-// inset surface for data strings (auth code / redirect host) · rides theme tokens
+// inset surface for data strings · rides theme tokens
 const inset: React.CSSProperties = {
   margin: "8px 0",
   padding: "10px 12px",
@@ -24,6 +26,7 @@ const inset: React.CSSProperties = {
   borderRadius: 8,
   color: "var(--ink)",
   wordBreak: "break-all",
+  whiteSpace: "pre-wrap",
 };
 const help: React.CSSProperties = { color: "var(--label)", fontSize: 12, lineHeight: 1.5 };
 const body: React.CSSProperties = { color: "var(--body)", lineHeight: 1.5 };
@@ -32,296 +35,165 @@ export default function ConnectPage() {
   return (
     <main className="narrow">
       <Suspense fallback={<div className="panel" style={{ color: "var(--body)" }}>Loading…</div>}>
-        <Consent />
+        <Connect />
       </Suspense>
     </main>
   );
 }
 
-type RequestInfo = {
-  request_id: string;
-  client_name: string | null;
-  redirect_host: string;
-  scope: string | null;
-  expires_at: number;
-};
-
-// The post-approve state. Some clients never receive the browser redirect: OpenClaw
-// registers a loopback redirect_uri but runs no listener there (login --code is its only
-// completion route), and headless Hermes can't reach a local browser port at all. So the
-// success screen always SHOWS the authorization code; the redirect is an enhancement,
-// not the only carrier. The code is single-use, PKCE-bound and short-lived, so rendering
-// it to the user who just approved grants nothing the redirect URL didn't already carry.
-type Granted = {
-  redirectTo: string;
-  code: string | null;
-  loopback: boolean; // http://localhost|127.0.0.1|[::1] target: the redirect may land on a dead port
-  client: string | null;
-  restored?: boolean; // re-shown after the user navigated back: never auto-redirect again
-};
-
-// URL.hostname always returns IPv6 bracketed, so "[::1]" is the only v6 spelling to match
-const LOOPBACK = ["localhost", "127.0.0.1", "[::1]"];
-
-function parseGrant(redirectTo: string, client: string | null): Granted {
-  // regex, not new URL().searchParams: must survive custom-scheme URIs (cursor://) too
-  const m = redirectTo.match(/[?&]code=([^&#]+)/);
-  let code: string | null = null;
-  if (m) {
-    try {
-      code = decodeURIComponent(m[1]);
-    } catch {
-      code = m[1];
-    }
-  }
-  let loopback = false;
+function publicKeyOf(secret: string): string | null {
   try {
-    const u = new URL(redirectTo);
-    loopback = u.protocol === "http:" && LOOPBACK.includes(u.hostname);
+    return KeyPair.fromString(secret.trim() as KeyPairString).getPublicKey().toString();
   } catch {
-    // unparseable custom scheme: treat as app-handled, auto-redirect is fine
+    return null;
   }
-  return { redirectTo, code, loopback, client };
 }
 
-const grantKey = (requestId: string) => `attestpay-grant-${requestId}`;
-
-function Consent() {
+function Connect() {
   const params = useSearchParams();
-  const requestId = params.get("request");
-  const { ready, authenticated, login } = useRemit();
-
-  const [info, setInfo] = useState<RequestInfo | null>(null);
+  const wallet = useWallet();
+  const owner = params.get("owner") ?? wallet.accountId ?? DEMO_OWNER;
   const [cards, setCards] = useState<CardState[] | null>(null);
-  const [picked, setPicked] = useState<string | null>(null);
-  const [phase, setPhase] = useState<"idle" | "submitting" | "redirecting">("idle");
-  const [granted, setGranted] = useState<Granted | null>(null);
+  const [picked, setPicked] = useState<string | null>(params.get("id"));
+  const [secret, setSecret] = useState("");
   const [err, setErr] = useState<string | null>(null);
 
-  // back-button recovery: if the redirect navigated to a dead loopback port and the user
-  // came back, re-show the success screen (and its code) instead of a stale consent form.
   useEffect(() => {
-    if (!requestId) return;
-    const raw = sessionStorage.getItem(grantKey(requestId));
-    if (!raw) return;
-    try {
-      const saved = JSON.parse(raw) as Granted & { exp: number };
-      if (saved.exp > Date.now()) setGranted({ ...saved, restored: true });
-      else sessionStorage.removeItem(grantKey(requestId));
-    } catch {
-      sessionStorage.removeItem(grantKey(requestId));
-    }
-  }, [requestId]);
+    api
+      .tree(owner)
+      .then(({ tree }) => {
+        const flat = (ns: typeof tree): CardState[] => ns.flatMap((n) => [n.card, ...flat(n.children)]);
+        setCards(flat(tree).filter((c) => c.status === "active" || c.status === "frozen"));
+      })
+      .catch((e) => setErr(e instanceof Error ? e.message : String(e)));
+  }, [owner]);
 
-  // auto-redirect ONLY for https/custom-scheme targets (those always resolve somewhere).
-  // Loopback targets never auto-redirect: whether a listener is actually running there is
-  // unknowable from here (OpenClaw and headless Hermes run none, and a client may omit or
-  // mislabel its DCR client_name), so the user keeps the code screen and continues by
-  // button. Restored grants (back-button after a dead redirect) never re-fire either.
-  useEffect(() => {
-    if (!granted || granted.loopback || granted.restored) return;
-    const t = setTimeout(() => {
-      window.location.href = granted.redirectTo;
-    }, 1500);
-    return () => clearTimeout(t);
-  }, [granted]);
+  const card = cards?.find((c) => c.card_id === picked) ?? null;
+  const derived = useMemo(() => (secret.trim() ? publicKeyOf(secret) : null), [secret]);
+  const matches = !!card && !!derived && derived === card.agent_key;
+  const cmds = card ? mcpCommands(owner, matches ? secret.trim() : "ed25519:<agent-secret>", `reins-${card.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`) : null;
 
-  useEffect(() => {
-    if (!authenticated || !requestId) return;
-    (async () => {
-      try {
-        const [i, cs] = await Promise.all([api.oauthRequest(requestId), api.cards()]);
-        setInfo(i);
-        // only live cards are grantable; frozen still answers (spends refuse until unfrozen)
-        setCards(cs.filter((c) => c.status === "active" || c.status === "frozen"));
-      } catch (e) {
-        setErr(e instanceof Error ? e.message : String(e));
-      }
-    })();
-  }, [authenticated, requestId]);
-
-  const approve = useCallback(async () => {
-    if (!requestId || !picked) return;
-    setPhase("submitting");
-    setErr(null);
-    try {
-      const { redirect_to } = await api.oauthApprove(requestId, picked);
-      const g = parseGrant(redirect_to, info?.client_name ?? null);
-      // codes live ~120s server-side; keep the recovery copy a touch shorter
-      try {
-        sessionStorage.setItem(grantKey(requestId), JSON.stringify({ ...g, exp: Date.now() + 110_000 }));
-      } catch {
-        // storage full/blocked: the in-memory screen still shows the code
-      }
-      setGranted(g);
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
-      setPhase("idle");
-    }
-  }, [requestId, picked, info]);
-
-  const deny = useCallback(async () => {
-    if (!requestId) return;
-    setPhase("submitting");
-    setErr(null);
-    try {
-      const { redirect_to } = await api.oauthDeny(requestId);
-      setPhase("redirecting");
-      window.location.href = redirect_to;
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
-      setPhase("idle");
-    }
-  }, [requestId]);
-
-  if (!requestId) {
-    return <div className="panel" style={body}>Missing the request parameter · start the connection from your agent.</div>;
-  }
-  if (granted) {
-    const openclaw = /openclaw/i.test(granted.client ?? "");
-    return (
-      <div className="panel" data-testid="granted">
-        <h1>Card Granted</h1>
-        {granted.code ? (
-          <>
-            <p style={body}>
-              {openclaw
-                ? "Your agent is waiting in the terminal · give it this code:"
-                : granted.loopback
-                  ? "Press Continue if your agent is listening locally · or give it this code if it asked for one:"
-                  : "Returning you to the app · if it asks for a code, use this one:"}
-            </p>
-            <p className="mono" data-testid="auth-code" style={{ ...inset, userSelect: "all" }}>
-              {granted.code}
-            </p>
-            <div className="row" style={{ gap: 8 }}>
-              <CopyButton text={granted.code} label="Copy Code" />
-              <button className="dbtn" onClick={() => (window.location.href = granted.redirectTo)} data-testid="continue">
-                Continue to App
-              </button>
-            </div>
-            <p style={{ ...help, marginTop: 8 }}>
-              {openclaw
-                ? <>Finish with <b>openclaw mcp login &lt;server&gt; --code &lt;code&gt;</b> · the code expires in ~2 minutes.</>
-                : <>Terminal clients take it like <b>… login &lt;server&gt; --code &lt;code&gt;</b> · expires in ~2 minutes · safe to close this tab once your agent confirms.</>}
-            </p>
-          </>
-        ) : (
-          <>
-            <p style={body}>Returning you to the app…</p>
-            <button className="dbtn" onClick={() => (window.location.href = granted.redirectTo)} data-testid="continue">
-              Continue
-            </button>
-          </>
-        )}
-      </div>
-    );
-  }
-  if (!ready) return <div className="panel" style={body}>Loading…</div>;
-  if (!authenticated) {
-    return (
-      <div className="panel" style={{ textAlign: "center", padding: 40 }}>
-        <h1>Connect an Agent to KeeperCard</h1>
-        <p style={{ ...body, margin: "8px 0 18px" }}>
-          An agent is asking for spending authority · sign in to pick which card it gets.
-        </p>
-        <button className="dbtn" onClick={login} data-testid="login">
-          Sign In
-        </button>
-      </div>
-    );
-  }
-  if (err && !info) {
+  if (err && !cards) {
     return (
       <div className="panel">
         <p className="err">{err}</p>
         <p style={body}>
-          The request may have expired (the agent can retry), or your account isn&apos;t set up yet:{" "}
-          <Link href="/app">open the dashboard</Link> first.
+          Could not read reins for {owner}. <Link href="/app">Open the dashboard</Link> first.
         </p>
       </div>
     );
   }
-  if (!info || !cards) return <div className="panel" style={body}>Loading request…</div>;
+  if (!cards) return <div className="panel" style={body}>Loading reins…</div>;
 
   return (
-    <div className="panel" data-testid="consent">
-      <h1>Grant a Card</h1>
+    <div className="panel" data-testid="connect">
+      <h1>Connect an Agent</h1>
       <p style={body}>
-        An app calling itself <b>{info.client_name ?? "an MCP client"}</b> is requesting access. If you
-        approve, the authorization will be sent to:
-      </p>
-      <p className="mono" style={inset}>
-        <b>{info.redirect_host}</b>
-      </p>
-      <p style={help}>
-        The app name is self-reported and unverified. Only continue if you recognize that destination as
-        the app you are connecting. It will receive a revocable token scoped to one card, never the card secret.
+        Your agent talks to the Reins MCP server, which signs with the rein&apos;s own key. Reins for <b>{owner}</b>:
       </p>
       {cards.length === 0 ? (
         <p style={body}>
-          No live cards to grant. <Link href="/app">Issue one on the dashboard</Link>, then retry from your agent.
+          No live reins. <Link href="/app">Create one on the dashboard</Link>, then come back.
         </p>
       ) : (
-        <>
-          <div role="radiogroup" aria-label="Card to grant" style={{ display: "flex", flexDirection: "column", gap: 8, margin: "14px 0" }}>
-            {cards.map((c) => {
-              const on = picked === c.card_id;
-              return (
-                <div
-                  key={c.card_id}
-                  role="radio"
-                  aria-checked={on}
-                  tabIndex={0}
-                  data-testid={`pick-${c.name}`}
-                  onClick={() => setPicked(c.card_id)}
-                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setPicked(c.card_id); } }}
+        <div role="radiogroup" aria-label="Rein to connect" style={{ display: "flex", flexDirection: "column", gap: 8, margin: "14px 0" }}>
+          {cards.map((c) => {
+            const on = picked === c.card_id;
+            return (
+              <div
+                key={c.card_id}
+                role="radio"
+                aria-checked={on}
+                tabIndex={0}
+                onClick={() => setPicked(c.card_id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") setPicked(c.card_id);
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: "12px 14px",
+                  border: `1px solid ${on ? "var(--accent)" : "var(--hairline)"}`,
+                  boxShadow: on ? "0 0 0 3px var(--accent-tint)" : undefined,
+                  borderRadius: 12,
+                  cursor: "pointer",
+                }}
+              >
+                <span
+                  aria-hidden
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                    padding: 12,
-                    border: on ? "1px solid var(--accent)" : "1px solid var(--hairline)",
-                    boxShadow: on ? "0 0 0 3px var(--accent-tint)" : undefined,
-                    borderRadius: 12,
-                    cursor: "pointer",
+                    width: 18, height: 18, flex: "none", borderRadius: "50%",
+                    border: on ? "none" : "1.5px solid var(--hairline-strong)",
+                    background: on ? "var(--accent)" : "transparent",
+                    color: "var(--on-ink)", display: "flex", alignItems: "center", justifyContent: "center",
                   }}
                 >
-                  <span
-                    aria-hidden
-                    style={{
-                      width: 18, height: 18, flex: "none", borderRadius: "50%",
-                      border: on ? "none" : "1.5px solid var(--hairline-strong)",
-                      background: on ? "var(--accent)" : "transparent",
-                      color: "var(--on-ink)", display: "flex", alignItems: "center", justifyContent: "center",
-                    }}
-                  >
-                    {on && <IconCheck />}
+                  {on && <IconCheck />}
+                </span>
+                <span style={{ flex: 1 }}>
+                  <b>
+                    #{c.card_id} {c.name}
+                  </b>{" "}
+                  <span className={`chip ${c.status}`}>{capWord(c.status)}</span>
+                  <br />
+                  <span style={{ color: "var(--label)", fontSize: 12 }}>
+                    {c.remaining_this_period !== null && `Ⓝ${c.remaining_this_period} left this window`}
+                    {c.remaining_this_period === null && c.remaining_lifetime !== null && `Ⓝ${c.remaining_lifetime} lifetime left`}
                   </span>
-                  <span style={{ flex: 1 }}>
-                    <b>{c.name}</b>{" "}
-                    <span className={`chip ${c.status}`}>{capWord(c.status)}</span>
-                    <br />
-                    <span style={{ color: "var(--label)", fontSize: 12 }}>
-                      {c.remaining_this_period !== null && `${c.remaining_this_period} USDC left this period`}
-                      {c.remaining_this_period === null && c.remaining_lifetime !== null && `${c.remaining_lifetime} USDC lifetime left`}
-                    </span>
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-          {err && <p className="err">{err}</p>}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {card && cmds && (
+        <>
+          <p style={body}>Agent secret for this rein (shown once when you created it · it never leaves this tab):</p>
+          <input
+            value={secret}
+            onChange={(e) => setSecret(e.target.value)}
+            placeholder="ed25519:…"
+            spellCheck={false}
+            style={{ width: "100%", fontFamily: "var(--font-mono)" }}
+            data-testid="agent-secret"
+          />
+          <p style={help}>
+            {!secret.trim()
+              ? `Bound key: ${card.agent_key}`
+              : !derived
+                ? "That is not a NEAR secret key."
+                : matches
+                  ? "Matches this rein's key."
+                  : `That key belongs to ${derived}, not to this rein.`}
+          </p>
+          <p className="mono" data-testid="mcp-command" style={inset}>
+            {cmds.cli}
+          </p>
           <div className="row" style={{ gap: 8 }}>
-            <button className="dbtn" onClick={approve} disabled={!picked || phase !== "idle"} data-testid="approve">
-              {phase === "idle" ? "Grant This Card" : phase === "submitting" ? "Granting…" : "Returning to your agent…"}
-            </button>
-            <button className="mghost" onClick={deny} disabled={phase !== "idle"} data-testid="deny">
-              Deny
-            </button>
+            <CopyButton text={cmds.cli} label="Copy for Claude Code" />
+            <CopyButton text={cmds.codex} label="Copy for Codex" />
+            <CopyButton text={cmds.json} label="Copy JSON" />
           </div>
         </>
       )}
+
+      <h2 style={{ fontSize: 15, marginTop: 22 }}>What this key can do</h2>
+      <ul style={{ ...body, paddingLeft: 18, marginTop: 6 }}>
+        <li>
+          Call only <span className="mono">{AGENT_METHODS.join(", ")}</span> on <span className="mono">{CONTRACT_ID}</span>.
+        </li>
+        <li>Never attach a deposit, so it can never withdraw, approve, unfreeze, change terms or override the blocklist.</li>
+        <li>Never transfer NEAR or add keys: NEAR itself refuses those for a function-call key.</li>
+        <li>
+          Spend gas from a {AGENT_ALLOWANCE_NEAR} NEAR allowance; when that runs out the key stops signing until you replace it.
+        </li>
+        <li>Pay only inside the rein&apos;s terms: the contract checks every payment, whatever the agent was told.</li>
+      </ul>
+      <p style={{ ...help, marginTop: 8 }}>
+        Lost the secret? Revoke the rein and create a new one · the old key dies with it.
+      </p>
     </div>
   );
 }
