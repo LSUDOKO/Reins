@@ -393,3 +393,7 @@ button:focus-visible, a:focus-visible { outline: 3px solid var(--lime); outline-
 /* surfaces that used the page colour now sit on the sheet */
 .note, .lpcode { background: var(--paper); }
 .docs { background: var(--page); }
+
+.reinfacts { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 10px; }
+.reinfacts .pill { background: var(--sage-soft); color: var(--forest-deep); }
+.reinfacts a { color: inherit; }
