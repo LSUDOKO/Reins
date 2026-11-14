@@ -14,6 +14,7 @@ import { reins } from "@/lib/api";
 import { CONTRACT_ID, DEMO_OWNER, RPC_URL, txUrl } from "@/lib/chain";
 import { nearToYocto } from "@/lib/near";
 import s from "./shop.module.css";
+import { SignInGate } from "../components/Gate";
 
 const MERCHANT = process.env.NEXT_PUBLIC_DEMO_MERCHANT ?? "reins-demo-shop.testnet";
 
@@ -34,6 +35,14 @@ type Result =
   | { kind: "preview"; preview: Preview };
 
 export default function ShopPage() {
+  return (
+    <SignInGate>
+      <Shop />
+    </SignInGate>
+  );
+}
+
+function Shop() {
   const [picked, setPicked] = useState<Product | null>(null);
   const [owner, setOwner] = useState(DEMO_OWNER);
   const [key, setKey] = useState("");
