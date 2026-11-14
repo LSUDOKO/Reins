@@ -61,11 +61,13 @@ if (paid.signature) {
   }
 }
 
+// The contract only signs the rein's exact next nonce.
+const next = Number((await reins.getRein(grant.reinId))!.evm_nonce);
 log(`\n5. agent tries a merchant outside the list`);
-const off = await agent.payEvm({ to: "0x2222222222222222222222222222222222222222", valueWei: value, nonce: 99, maxFeePerGas: maxFee, maxPriorityFeePerGas: "1000000" });
+const off = await agent.payEvm({ to: "0x2222222222222222222222222222222222222222", valueWei: value, nonce: next, maxFeePerGas: maxFee, maxPriorityFeePerGas: "1000000" });
 log(`   -> ${off.error}`, link(off.txHash));
 if (off.txHash) record({ label: "chain signatures: merchant outside the list", txHash: off.txHash, signer: CFG.owner, expect: "panic", code: "merchant_not_allowed" });
-const big = await agent.payEvm({ to: MERCHANT, valueWei: String(ETH / 100n), nonce: 99, maxFeePerGas: maxFee, maxPriorityFeePerGas: "1000000" });
+const big = await agent.payEvm({ to: MERCHANT, valueWei: String(ETH / 100n), nonce: next, maxFeePerGas: maxFee, maxPriorityFeePerGas: "1000000" });
 log(`   agent tries 0.01 ETH (cap 0.001) -> ${big.error}`, link(big.txHash));
 if (big.txHash) record({ label: "chain signatures: over cap", txHash: big.txHash, signer: CFG.owner, expect: "panic", code: "over_per_tx_cap" });
 const r = (await reins.getRein(grant.reinId))!;
