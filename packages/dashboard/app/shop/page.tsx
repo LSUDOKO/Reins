@@ -1,71 +1,50 @@
 "use client";
 
-// /shop: standalone demo merchant ("s0nder supply co."), a sibling storefront
-// on the remit design system (same tokens, light + INK dark) with an honest
-// foot note: test-mode Visa, real on-chain settlement. An agent fills the
-// checkout form via browser automation (data-testids below), the fiat lane
-// authorizes behind the scenes. No Privy, no dashboard chrome - plain fetch
-// against the server's public /shop routes. Also served at the shop.* host
-// (proxy.ts rewrites it here).
+// /shop: the demo merchant ("s0nder data co."), a sibling storefront on the same
+// design system. It sells to agents and is paid in NEAR by reins-demo-shop.testnet.
+// Checkout takes the owner account and the agent's key: with a secret key the
+// payment is signed in this tab with that function-call key (exactly what an agent
+// does) and the contract decides; with only a public key it runs the free
+// preview_pay dry run and moves nothing.
 
 import { useEffect, useState } from "react";
-import { shopApiBase } from "./api-base";
+import { JsonRpcProvider, KeyPair, type KeyPairString } from "near-api-js";
+import { AgentClient, type Preview } from "@reins/sdk";
+import { reins } from "@/lib/api";
+import { CONTRACT_ID, DEMO_OWNER, RPC_URL, txUrl } from "@/lib/chain";
+import { nearToYocto } from "@/lib/near";
 import s from "./shop.module.css";
 
-const BASE = shopApiBase(process.env.NEXT_PUBLIC_ATTESTPAY_API);
+const MERCHANT = process.env.NEXT_PUBLIC_DEMO_MERCHANT ?? "reins-demo-shop.testnet";
 
-type Product = { id: string; name: string; price: string; description?: string | null };
-type Catalog = { merchant: string; products: Product[] };
-type CheckoutResult = {
-  approved: boolean;
-  reason: string;
-  authorization_id?: string;
-  product?: Product;
-  last4?: string;
+type Product = { id: string; name: string; price: string; description: string };
+const CATALOG: { merchant: string; products: Product[] } = {
+  merchant: "s0nder data co.",
+  products: [
+    { id: "weather", name: "Weather dataset", price: "0.05", description: "Hourly, 2020–2026, 40 cities" },
+    { id: "credits", name: "API credits", price: "0.1", description: "10k calls to the geocoding API" },
+    { id: "gpu", name: "GPU hour", price: "0.18", description: "One A100 hour, billed per minute" },
+    { id: "report", name: "Market report", price: "0.3", description: "Quarterly, 80 pages, with raw tables" },
+  ],
 };
 
-export default function ShopPage() {
-  const [catalog, setCatalog] = useState<Catalog | null>(null);
-  const [stripeCatalog, setStripeCatalog] = useState<Catalog | null>(null);
-  const [loadErr, setLoadErr] = useState<string | null>(null);
-  const [stripeLoadErr, setStripeLoadErr] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"s0nder" | "stripe">("s0nder");
+type Result =
+  | { kind: "paid"; tx: string }
+  | { kind: "refused"; reason: string; tx?: string }
+  | { kind: "preview"; preview: Preview };
 
+export default function ShopPage() {
   const [picked, setPicked] = useState<Product | null>(null);
-  const [number, setNumber] = useState("");
-  const [expMonth, setExpMonth] = useState("");
-  const [expYear, setExpYear] = useState("");
-  const [cvc, setCvc] = useState("");
+  const [owner, setOwner] = useState(DEMO_OWNER);
+  const [key, setKey] = useState("");
   const [paying, setPaying] = useState(false);
-  const [result, setResult] = useState<CheckoutResult | null>(null);
+  const [result, setResult] = useState<Result | null>(null);
   const [payErr, setPayErr] = useState<string | null>(null);
 
+  // keep the browser tab in character
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch(`${BASE}/shop/products`, { cache: "no-store" });
-        if (!res.ok) throw new Error(`http ${res.status}`);
-        setCatalog((await res.json()) as Catalog);
-      } catch (e) {
-        setLoadErr(e instanceof Error ? e.message : String(e));
-      }
-    })();
-    (async () => {
-      try {
-        const res = await fetch(`${BASE}/shop/stripe-products`, { cache: "no-store" });
-        if (res.ok) {
-          setStripeCatalog((await res.json()) as Catalog);
-        }
-      } catch (e) {
-        setStripeLoadErr(e instanceof Error ? e.message : String(e));
-      }
-    })();
+    document.title = CATALOG.merchant;
   }, []);
-
-  // keep the browser tab in character (root layout titles the KeeperCard dashboard)
-  useEffect(() => {
-    document.title = catalog?.merchant ?? "s0nder supply co.";
-  }, [catalog]);
 
   const pick = (p: Product) => {
     setPicked(p);
@@ -73,29 +52,36 @@ export default function ShopPage() {
     setPayErr(null);
   };
 
+  const isSecret = key.trim().startsWith("ed25519:") && key.trim().length > 60;
+
   const pay = async () => {
     if (!picked) return;
     setPaying(true);
     setPayErr(null);
-    const endpoint =
-      activeTab === "stripe" && stripeCatalog?.products.some((p) => p.id === picked.id)
-        ? `${BASE}/shop/stripe-checkout`
-        : `${BASE}/shop/checkout`;
     try {
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          product_id: picked.id,
-          card: { number, exp_month: Number(expMonth), exp_year: Number(expYear), cvc },
-        }),
-      });
-      // declines come back 200 { approved: false }; only malformed/disabled are non-2xx
-      const body = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(body?.reason ?? body?.error ?? `http ${res.status}`);
-      setResult(body as CheckoutResult);
+      if (isSecret) {
+        const agent = new AgentClient(owner.trim(), key.trim() as KeyPairString, new JsonRpcProvider({ url: RPC_URL }), CONTRACT_ID, reins);
+        const tx = await agent.rawPay(MERCHANT, picked.price, `${CATALOG.merchant}: ${picked.name}`);
+        const paid = tx.events.some((e) => e.event === "payment");
+        setResult(paid ? { kind: "paid", tx: tx.txHash } : { kind: "refused", reason: tx.error ?? "transfer failed", tx: tx.txHash || undefined });
+      } else {
+        const pk = key.trim() ? KeyPair.fromString(key.trim() as KeyPairString).getPublicKey().toString() : "";
+        const preview = await reins.previewPay(owner.trim(), pk || key.trim(), MERCHANT, nearToYocto(picked.price).toString());
+        setResult({ kind: "preview", preview });
+      }
     } catch (e) {
-      setPayErr(e instanceof Error ? e.message : String(e));
+      // a public key is not a KeyPair: preview with it directly
+      if (picked && key.trim().startsWith("ed25519:") && !isSecret) {
+        try {
+          const preview = await reins.previewPay(owner.trim(), key.trim(), MERCHANT, nearToYocto(picked.price).toString());
+          setResult({ kind: "preview", preview });
+          return;
+        } catch (e2) {
+          setPayErr(e2 instanceof Error ? e2.message : String(e2));
+        }
+      } else {
+        setPayErr(e instanceof Error ? e.message : String(e));
+      }
     } finally {
       setPaying(false);
     }
@@ -106,150 +92,54 @@ export default function ShopPage() {
     setPayErr(null);
   };
 
-  const formReady = number.trim() !== "" && expMonth.trim() !== "" && expYear.trim() !== "" && cvc.trim() !== "";
-
-  const activeCatalog = activeTab === "stripe" ? stripeCatalog : catalog;
-  const activeMerchant =
-    activeTab === "stripe"
-      ? stripeCatalog?.merchant ?? "keepercard marketplace"
-      : catalog?.merchant ?? "s0nder supply co.";
-  const products = activeCatalog?.products ?? [];
+  const formReady = owner.trim() !== "" && key.trim() !== "";
 
   return (
     <div className={s.wrap}>
       <div className={s.inner}>
-        <div className={s.brand}>{activeMerchant}</div>
-        <div className={s.tag}>
-          {activeTab === "stripe"
-            ? "Digital goods from the Stripe catalog."
-            : "Everyday goods, shipped fast."}
+        <div className={s.brand}>{CATALOG.merchant}</div>
+        <div className={s.tag}>Data and compute for agents, paid in NEAR.</div>
+
+        <div className={s.grid}>
+          {CATALOG.products.map((p) => (
+            <div key={p.id} className={s.product}>
+              <div className={s.pname}>{p.name}</div>
+              <div className={s.pdesc}>{p.description}</div>
+              <div className={s.pprice}>Ⓝ{p.price}</div>
+              <button className={picked?.id === p.id ? `${s.buy} ${s.active}` : s.buy} onClick={() => pick(p)} data-testid={`buy-${p.id}`}>
+                Buy
+              </button>
+            </div>
+          ))}
         </div>
-
-        {/* Store tabs */}
-        <div className={s.tabs}>
-          <button
-            className={`${s.tab} ${activeTab === "s0nder" ? s.tabActive : ""}`}
-            onClick={() => { setActiveTab("s0nder"); setPicked(null); setResult(null); setPayErr(null); }}
-          >
-            s0nder supply co.
-          </button>
-          {stripeCatalog && (
-            <button
-              className={`${s.tab} ${activeTab === "stripe" ? s.tabActive : ""}`}
-              onClick={() => { setActiveTab("stripe"); setPicked(null); setResult(null); setPayErr(null); }}
-            >
-              Stripe Marketplace
-            </button>
-          )}
-        </div>
-
-        {loadErr && activeTab === "s0nder" && (
-          <p className={s.quiet}>Store is unavailable right now ({loadErr}). Refresh to retry.</p>
-        )}
-        {stripeLoadErr && activeTab === "stripe" && (
-          <p className={s.quiet}>Stripe catalog unavailable ({stripeLoadErr}). Check Stripe env vars.</p>
-        )}
-        {!activeCatalog && activeTab === "s0nder" && !loadErr && (
-          <div className={s.grid} aria-hidden>
-            {Array.from({ length: 6 }, (_, i) => (
-              <div key={i} className={s.skel}>
-                <i />
-                <i />
-                <i />
-              </div>
-            ))}
-          </div>
-        )}
-        {!activeCatalog && activeTab === "stripe" && !stripeLoadErr && (
-          <div className={s.grid} aria-hidden>
-            {Array.from({ length: 3 }, (_, i) => (
-              <div key={i} className={s.skel}>
-                <i />
-                <i />
-                <i />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {products.length > 0 && (
-          <div className={s.grid}>
-            {products.map((p) => (
-              <div key={p.id} className={s.product}>
-                <div className={s.pname}>{p.name}</div>
-                {p.description && <div className={s.pdesc}>{p.description}</div>}
-                <div className={s.pprice}>${p.price}</div>
-                <button
-                  className={picked?.id === p.id ? `${s.buy} ${s.active}` : s.buy}
-                  onClick={() => pick(p)}
-                  data-testid={`buy-${p.id}`}
-                >
-                  Buy
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
 
         {picked && (
           <div className={s.panel}>
             <div className={s.ptitle}>
-              Checkout · {picked.name} · ${picked.price}
+              Checkout · {picked.name} · Ⓝ{picked.price}
             </div>
 
             {result === null ? (
               <>
                 <div className={s.fields}>
                   <label className={s.field}>
-                    Card Number
+                    Owner Account
+                    <input value={owner} onChange={(e) => setOwner(e.target.value)} placeholder="you.testnet" data-testid="owner" />
+                  </label>
+                  <label className={s.field}>
+                    Agent Key
                     <input
-                      value={number}
-                      onChange={(e) => setNumber(e.target.value)}
-                      inputMode="numeric"
-                      autoComplete="cc-number"
-                      placeholder="4242 4242 4242 4242"
-                      data-testid="number"
+                      value={key}
+                      onChange={(e) => setKey(e.target.value)}
+                      placeholder="ed25519:… secret to pay, or public key to preview"
+                      spellCheck={false}
+                      data-testid="agent-key"
                     />
                   </label>
-                  <div className={s.exprow}>
-                    <label className={s.field}>
-                      Exp Month
-                      <input
-                        value={expMonth}
-                        onChange={(e) => setExpMonth(e.target.value)}
-                        inputMode="numeric"
-                        autoComplete="cc-exp-month"
-                        placeholder="12"
-                        data-testid="exp-month"
-                      />
-                    </label>
-                    <label className={s.field}>
-                      Exp Year
-                      <input
-                        value={expYear}
-                        onChange={(e) => setExpYear(e.target.value)}
-                        inputMode="numeric"
-                        autoComplete="cc-exp-year"
-                        placeholder="2030"
-                        data-testid="exp-year"
-                      />
-                    </label>
-                    <label className={s.field}>
-                      CVC
-                      <input
-                        value={cvc}
-                        onChange={(e) => setCvc(e.target.value)}
-                        inputMode="numeric"
-                        autoComplete="cc-csc"
-                        placeholder="123"
-                        data-testid="cvc"
-                      />
-                    </label>
-                  </div>
                 </div>
                 <div className={s.payrow}>
                   <button className={s.pay} onClick={pay} disabled={!formReady || paying} data-testid="pay">
-                    {paying ? "Paying…" : `Pay $${picked.price}`}
+                    {paying ? "Paying…" : isSecret ? `Pay Ⓝ${picked.price}` : `Preview Ⓝ${picked.price}`}
                   </button>
                 </div>
                 {payErr && (
@@ -258,14 +148,15 @@ export default function ShopPage() {
                   </div>
                 )}
               </>
-            ) : result.approved ? (
+            ) : result.kind === "paid" ? (
               <>
                 <div className={`${s.result} ${s.approved}`} data-testid="result">
-                  Payment approved · {result.product?.name ?? picked.name}
-                  {result.last4 && <> · card ending {result.last4}</>}
-                  {result.authorization_id && (
-                    <span className={s.authid}>Authorization {result.authorization_id}</span>
-                  )}
+                  Payment settled · {picked.name}
+                  <span className={s.authid}>
+                    <a href={txUrl(result.tx)} target="_blank" rel="noreferrer">
+                      Transaction {result.tx.slice(0, 10)}…
+                    </a>
+                  </span>
                 </div>
                 <div className={s.payrow}>
                   <button className={s.again} onClick={tryAgain} data-testid="try-again">
@@ -273,10 +164,29 @@ export default function ShopPage() {
                   </button>
                 </div>
               </>
+            ) : result.kind === "preview" ? (
+              <>
+                <div className={`${s.result} ${result.preview.ok ? s.approved : s.declined}`} data-testid="result">
+                  Dry run · {result.preview.ok ? "the contract would pay this" : result.preview.needs_approval ? "the owner must approve this one" : `the contract would refuse: ${result.preview.code}`}
+                  <span className={s.authid}>preview_pay · nothing moved</span>
+                </div>
+                <div className={s.payrow}>
+                  <button className={s.again} onClick={tryAgain} data-testid="try-again">
+                    Back
+                  </button>
+                </div>
+              </>
             ) : (
               <>
                 <div className={`${s.result} ${s.declined}`} data-testid="result">
-                  Payment declined · {result.reason}
+                  Payment refused by the contract · {result.reason}
+                  {result.tx && (
+                    <span className={s.authid}>
+                      <a href={txUrl(result.tx)} target="_blank" rel="noreferrer">
+                        Transaction {result.tx.slice(0, 10)}…
+                      </a>
+                    </span>
+                  )}
                 </div>
                 <div className={s.payrow}>
                   <button className={s.again} onClick={tryAgain} data-testid="try-again">
@@ -289,21 +199,12 @@ export default function ShopPage() {
         )}
 
         <p className={s.foot}>
-          A demo storefront. It accepts Visa cards issued by{" "}
+          A demo storefront. It is paid by agents holding a{" "}
           <a href="/" target="_blank" rel="noreferrer">
-            KeeperCard
+            Reins
           </a>{" "}
-          in Stripe test mode; every charge authorizes in real time against the card&apos;s on-chain budget, and
-          approved charges settle as real USDC transfers on Base.{" "}
-          {stripeCatalog && (
-            <>
-              Your Stripe products appear in the{" "}
-              <button className={s.linkBtn} onClick={() => setActiveTab("stripe")}>
-                Stripe Marketplace
-              </button>
-              {" "}tab.
-            </>
-          )}
+          key: every payment goes from the owner&apos;s vault to <code>{MERCHANT}</code> on NEAR testnet, and the contract
+          checks the rein&apos;s terms first. The key is used in this tab only.
         </p>
       </div>
     </div>
