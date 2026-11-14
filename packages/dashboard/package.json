@@ -8,11 +8,18 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@near-wallet-selector/core": "^10.1.4",
+    "@near-wallet-selector/meteor-wallet": "^10.1.4",
+    "@near-wallet-selector/modal-ui": "^10.1.4",
+    "@near-wallet-selector/my-near-wallet": "^10.1.4",
+    "@reins/sdk": "workspace:*",
     "motion": "^12.40.0",
     "next": "16.3.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "@reins/sdk": "workspace:*"
+    "@near-js/transactions": "^2.5.1",
+    "@near-js/crypto": "^2.5.1",
+    "near-api-js": "^7.5.3"
   },
   "devDependencies": {
     "@types/node": "^22",
