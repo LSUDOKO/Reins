@@ -37,7 +37,7 @@ flowchart LR
   FK -- "owner methods (>= 1 yocto)" --> C
   C -- "transfer / ft_transfer" --> R[Receiver]
   C -- "sign(payload)" --> MPC[v1.signer-prod.testnet<br/>Chain Signatures]
-  C -- "#[private] callback: settle or roll back" --> C
+  C -- "private callback: settle or roll back" --> C
 ```
 
 Four independent layers stop a compromised agent:

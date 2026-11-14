@@ -10,7 +10,7 @@ flowchart TB
   subgraph Agent host
     LLM[Claude Code / Codex / any MCP client]
     MCP[Reins MCP server<br/>packages/mcp]
-    SDK[@reins/sdk<br/>guardedPay · policy · counterparty · evm]
+    SDK["@reins/sdk<br/>guardedPay, policy, counterparty, evm"]
   end
   subgraph Cloudflare
     API[Reins API Worker<br/>/draft /explain /screen]
@@ -86,7 +86,7 @@ sequenceDiagram
     S->>C: pay (function-call key on owner account, 0 deposit)
     C->>C: check rein + ancestors, book → Booking{chain, windows, currency}
     C->>R: transfer (NEAR) or ft_transfer (token)
-    C->>C: on_paid(Booking): success → pair_count, event payment<br/>failure → unbook(Booking), event payment_failed
+    C->>C: on_paid(Booking): success adds pair_count and emits payment<br/>failure runs unbook(Booking) and emits payment_failed
   end
 ```
 

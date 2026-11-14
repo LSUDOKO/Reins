@@ -1,9 +1,5 @@
 <p align="center">
-  <img src="docs/brand/banner.png" alt="Reins: spending limits for AI agents on NEAR" width="100%">
-</p>
-
-<p align="center">
-  <img src="docs/brand/mark.png" alt="Reins logo" width="72">
+  <img src="docs/brand/wordmark.png" alt="Reins" width="560">
 </p>
 
 <h3 align="center">Give your AI agent a spending limit, not your keys.</h3>
@@ -35,7 +31,11 @@
   <a href="ARCHITECTURE.md">Architecture</a>
 </p>
 
-Built at **NEAR HACKATHON** (Nov 2026). Tracks: **AI Security & Defense** (`security`) · **Agent Economy** (`agents`).
+<p align="center">Built at <b>NEAR HACKATHON</b> (Nov 2026) · Tracks: <b>AI Security &amp; Defense</b> (<code>security</code>) · <b>Agent Economy</b> (<code>agents</code>)</p>
+
+<p align="center">
+  <img src="docs/brand/banner.png" alt="Reins: give your AI agent a spending limit, not your keys" width="100%">
+</p>
 
 ---
 
@@ -124,7 +124,7 @@ is reproducible from this repository ([JUDGES.md](JUDGES.md)).
 
 ```mermaid
 flowchart LR
-  O[Owner<br/>full-access key] -- "deposit, create rein,<br/>add agent key" --> C[(Reins contract<br/>reins-near.testnet)]
+  O[Owner<br/>full-access key] -- "deposit, create rein,<br/>add agent key" --> C["(Reins contract<br/>reins-near.testnet)"]
   A[AI agent<br/>Claude · Codex · MCP] -- "pay (function-call key)" --> G{Reins guard<br/>SDK}
   G -- "block: never signs" --> X[refused]
   G -- "warn: ask the human" --> O
@@ -204,7 +204,7 @@ on-chain record anyone can check.
 flowchart TB
   UI[Console · Next.js static · Cloudflare] --> C
   UI --> API[Reins API Worker · Groq]
-  Agent[Claude / Codex] --> MCP[MCP server] --> SDK[@reins/sdk guard]
+  Agent[Claude / Codex] --> MCP[MCP server] --> SDK["@reins/sdk guard"]
   SDK --> C[reins-near.testnet]
   SDK --> API
   SDK --> NB[NEARBlocks · archival RPC]
@@ -236,11 +236,11 @@ sequenceDiagram
   participant C as reins contract
   participant R as Receiver
   A->>C: pay(receiver, amount) — deposit 0
-  C->>C: caller_rein: (predecessor, signer_pk) → rein; signer == predecessor
+  C->>C: caller_rein finds the rein from predecessor and signer key, requires signer == predecessor
   C->>C: check(rein + ancestors): active, expiry, uses, merchants, cap, budget window, approval, blocklist, vault
-  C->>C: book → Booking{chain, windows, currency}; vault −= amount
+  C->>C: book → Booking{chain, windows, currency}, vault −= amount
   C->>R: transfer / ft_transfer
-  C->>C: on_paid(Booking): ok → pair_count + event "payment" · fail → unbook + event "payment_failed"
+  C->>C: on_paid(Booking): ok means pair_count and event payment, failure means unbook and event payment_failed
 ```
 </details>
 
