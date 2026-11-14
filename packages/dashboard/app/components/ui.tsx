@@ -38,6 +38,19 @@ export function shortHex(s: string | null | undefined, head = 6, tail = 4): stri
   return `${s.slice(0, head)}…${tail > 0 ? s.slice(-tail) : ""}`;
 }
 
+/** hex of an ed25519:<base58> public key, so the agent key can wear the card's PAN */
+export function keyHex(pk: string | null | undefined): string {
+  const b58 = (pk ?? "").replace(/^ed25519:/, "");
+  const A = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+  let n = 0n;
+  for (const ch of b58) {
+    const i = A.indexOf(ch);
+    if (i < 0) return "";
+    n = n * 58n + BigInt(i);
+  }
+  return n.toString(16);
+}
+
 /** derive the card "PAN": four 4-hex groups from a 0x address/id */
 export function panGroups(hex: string | null | undefined): string[] {
   const h = (hex ?? "").replace(/^0x/i, "").toLowerCase().padEnd(16, "0");
