@@ -2,14 +2,14 @@
 
 // /docs: the reference, in the house style. A quiet left TOC rail (scroll-spy,
 // theme toggle + back-to-app at the foot) beside one prose column. Public route,
-// no auth: documentation reads the same signed-in or out. Everything here is
-// grounded in the actual engine/server/dashboard code, not aspirational.
+// no auth. Everything here is grounded in the contract, SDK and MCP server code.
 
 import Link from "next/link";
 import { Fragment, useEffect, useState } from "react";
 import { ThemeToggle } from "../components/Theme";
 import { Logo } from "../components/Logo";
 import { IconCheck, IconCopy, copyText } from "../components/ui";
+import { CONTRACT_ID } from "@/lib/chain";
 
 // ---------------------------------------------------------------------------
 // Table of contents: grouped into proper sections (drives the nav). The groups
@@ -26,10 +26,11 @@ const NAV: { group: string; items: { id: string; label: string }[] }[] = [
     ],
   },
   {
-    group: "Cards",
+    group: "Reins",
     items: [
-      { id: "issuing", label: "Issuing a Card" },
-      { id: "terms", label: "Card Terms" },
+      { id: "creating", label: "Creating a Rein" },
+      { id: "terms", label: "Rein Terms" },
+      { id: "errors", label: "Error Codes" },
     ],
   },
   {
@@ -37,49 +38,25 @@ const NAV: { group: string; items: { id: string; label: string }[] }[] = [
     items: [
       { id: "connect", label: "Connecting an Agent" },
       { id: "tools", label: "MCP Tools" },
+      { id: "keys", label: "Function-Call Key Limits" },
     ],
   },
   {
     group: "Advanced",
     items: [
-      { id: "execute", label: "Contract Cards" },
-      { id: "subcards", label: "Sub-Cards & Revocation" },
-    ],
-  },
-  {
-    group: "Operate",
-    items: [
-      { id: "rails", label: "Payment Rails" },
-      { id: "security", label: "Security" },
-    ],
-  },
-  {
-    group: "Ops",
-    items: [
-      { id: "webhooks", label: "Webhooks & Events" },
-      { id: "teams", label: "Teams & Roles" },
-      { id: "audit", label: "Audit Log" },
-      { id: "sdk", label: "SDK" },
-    ],
-  },
-  {
-    group: "SigNoz",
-    items: [
-      { id: "signoz-overview", label: "Observability Overview" },
-      { id: "signoz-traces", label: "Traces" },
-      { id: "signoz-metrics", label: "Metrics" },
-      { id: "signoz-logs", label: "Structured Logs" },
-      { id: "signoz-dashboard", label: "Dashboard & Queries" },
-      { id: "signoz-mcp", label: "SigNoz MCP" },
-      { id: "signoz-alerts", label: "Alerts & Self-Hosting" },
+      { id: "approvals", label: "Owner Approvals" },
+      { id: "subreins", label: "Sub-Reins & Revocation" },
+      { id: "guard", label: "Counterparty Guard" },
+      { id: "intents", label: "Cross-Chain Quotes" },
     ],
   },
   {
     group: "Reference",
     items: [
-      { id: "api", label: "API Reference" },
-      { id: "selfhost", label: "Self-Hosting" },
-      { id: "cookoff", label: "The Cook Off" },
+      { id: "contract", label: "Contract Methods" },
+      { id: "events", label: "Events" },
+      { id: "sdk", label: "SDK & CLI" },
+      { id: "verify", label: "Verify It Yourself" },
     ],
   },
 ];
@@ -229,73 +206,65 @@ export default function DocsPage() {
         <div className="docwrap">
           {/* hero */}
           <header className="dochero">
-            <span className="doceyebrow">The agentic card</span>
+            <span className="doceyebrow">Spending limits for agents</span>
             <h1>Documentation</h1>
             <p className="docsub">
-              KeeperCard issues scoped, revocable spending cards from your wallet. Any agent plugs one in over MCP and
-              pays within your limits, holding no keys and no funds, dead the moment you revoke. Here is how it
-              works, end to end.
+              Reins gives an AI agent a NEAR function-call key instead of your keys. The Reins contract holds the rules and
+              checks every payment; the agent can spend inside them and nothing else. Here is how it works, end to end.
             </p>
           </header>
 
           {/* ---- Overview ---- */}
           <Section id="overview" title="Overview">
             <p className="docp">
-              Agents need to spend money. Handing an agent your private key is reckless; funding a standalone agent
-              wallet loses both your custody and your limits. KeeperCard takes the model the card industry settled on
-              decades ago and applies it to agents: the wallet stays the account, and the agent gets a <b>card</b>,
-              a scoped authority to draw from it.
+              Agents need to spend money. Handing one a full-access key is reckless; funding a separate wallet gives up your
+              limits. Reins uses what NEAR already has: an account can hold <b>function-call access keys</b> that may call
+              only named methods of one contract and can never attach a deposit.
             </p>
             <ul className="docul">
               <li className="docli">
-                <b>Your wallet is the account.</b> Funds never leave it until the moment of payment.
+                <b>The vault is the account.</b> You deposit NEAR into the Reins contract; it is held for you and only your
+                full-access key can withdraw it.
               </li>
               <li className="docli">
-                <b>The card is a delegation.</b> A scoped ERC-7710 delegation, signed by your wallet, wrapped in
-                caveats: budget per period, per-transaction cap, merchant allowlist, expiry, usage count, contract
-                scope.
+                <b>A rein is terms bound to a key.</b> Budget per window, per-payment cap, approval threshold, merchant
+                lock, expiry, usage count — stored on-chain against one public key.
               </li>
               <li className="docli">
-                <b>The agent holds the card, not the money.</b> What the agent gets is an MCP endpoint URL. Behind
-                it, the card can spend only what its terms allow, signed by an agent key that holds nothing.
+                <b>The agent holds a function-call key.</b> It lives on your account but can call only <code>pay</code>,{" "}
+                <code>request_approval</code> and <code>issue_subrein</code>.
               </li>
               <li className="docli">
-                <b>Revoke kills it instantly.</b> Freeze or revoke a card (or its whole sub-card tree) and every
-                payment stops, server-side immediately and on-chain underneath.
+                <b>Revoke kills it.</b> Freeze, revoke a rein and its subtree, or revoke every rein you own in one
+                transaction.
               </li>
             </ul>
 
             <div className="docdiagram">
-              {`your wallet  `}<span className="mut">(EIP-7702 smart account)</span>{`
-   └── `}<b>card</b>{`   `}<span className="mut">$25 / week · expires Jul 6</span>{`        ← root delegation, signed by you
-        ├── agent A plugs it in over MCP
-        └── `}<b>sub-card</b>{`   `}<span className="mut">$1 / week · one merchant</span>{`   ← redelegation, narrower terms
-             └── sub-agent B plugs it in`}
+              {`you.testnet  `}<span className="mut">(full-access key: deposits, approvals, revokes)</span>{`
+   ├── vault in reins-demo.testnet   `}<span className="mut">Ⓝ1.7</span>{`
+   └── `}<b>rein #2</b>{`   `}<span className="mut">Ⓝ0.5 / day · Ⓝ0.2 per payment · ask above Ⓝ0.1</span>{`   ← function-call key on you.testnet
+        └── `}<b>sub-rein #3</b>{`   `}<span className="mut">Ⓝ0.1 / day</span>{`   ← issued by the agent, key added by you`}
             </div>
-
-            <p className="docp">
-              KeeperCard runs on <b>Base mainnet</b> with real USDC. The only simulated leg is the Visa rail (Stripe
-              test-mode Issuing), labeled honestly wherever it appears.
-            </p>
 
             <div className="docfacts">
               <div className="docfact">
-                <div className="fk">Dashboard</div>
+                <div className="fk">Contract</div>
                 <div className="fv">
-                  <span>keepercard (your deployment)</span>
+                  <code>{CONTRACT_ID}</code>
                 </div>
               </div>
               <div className="docfact">
-                <div className="fk">API + MCP</div>
+                <div className="fk">Network</div>
                 <div className="fv">
-                  <span>keepercard-api (your deployment)</span>
+                  <span>NEAR testnet</span>
                 </div>
               </div>
               <div className="docfact">
-                <div className="fk">Demo merchant</div>
+                <div className="fk">Source</div>
                 <div className="fv">
-                  <a href="https://shop.s0nderlabs.xyz" target="_blank" rel="noreferrer">
-                    shop.s0nderlabs.xyz
+                  <a href="https://github.com/LSUDOKO/Reins" target="_blank" rel="noreferrer">
+                    github.com/LSUDOKO/Reins
                   </a>
                 </div>
               </div>
@@ -304,1009 +273,230 @@ export default function DocsPage() {
 
           {/* ---- Lifecycle ---- */}
           <Section id="lifecycle" title="How a Payment Works">
-            <ul className="docul">
+            <ol className="docul">
               <li className="docli">
-                You sign in to the dashboard (Privy embedded wallet, Google or email) and issue a card with terms,
-                set by hand in the composer or drafted from plain language by the Venice-powered compiler.
+                <b>Check the receiver.</b> The MCP server scores it: shared blocklist, existence, age, recent contract code
+                changes, your history with it, look-alike names. <i>block</i> refuses to sign; <i>warn</i> asks you.
               </li>
               <li className="docli">
-                The dashboard compiles those terms into on-chain caveats, your wallet signs the delegation in the
-                browser, and the server stores it alongside a fresh agent key that holds nothing.
+                <b>Dry run.</b> <code>preview_pay</code> is a free view that runs the exact same check as <code>pay</code>.
               </li>
               <li className="docli">
-                You hand the card URL to any agent (one <code>claude mcp add</code>, a Cursor deeplink, a pasted
-                connector URL).
+                <b>Pay.</b> The agent signs <code>pay</code> with its key. The contract finds the rein from the signing key,
+                checks every rule along the rein and its ancestors, books the spend, and transfers from your vault.
               </li>
               <li className="docli">
-                When the agent calls <code>pay</code>, the server validates the terms, then redeems the delegation
-                through the 1Shot Public Relayer: gasless, on Base mainnet, settled in USDC from your wallet.
+                <b>Settle.</b> A callback confirms the transfer. If it failed (say, the account does not exist), budget, uses
+                and vault are restored and a <code>payment_failed</code> event is emitted.
               </li>
-              <li className="docli">
-                Every charge lands in the card&apos;s ledger with memo, fee, and tx hash, attributed to the agent
-                key that spent it.
-              </li>
-            </ul>
-            <Note>
-              The agent never sees a private key, never holds a balance, never needs ETH. The first spend even
-              deploys your wallet&apos;s EIP-7702 smart-account code automatically, attached to the same redemption
-              as an authorization list.
-            </Note>
+            </ol>
           </Section>
 
-          {/* ---- Issuing ---- */}
-          <Section id="issuing" title="Issuing a Card">
+          {/* ---- Creating ---- */}
+          <Section id="creating" title="Creating a Rein">
             <p className="docp">
-              A card is born from a <code>CardTerms</code> object: a <code>pay</code> budget, a <code>contract</code>{" "}
-              scope, or both, plus lifecycle limits (expiry, max uses, per-charge cap, merchant lock, sub-cards
-              on/off). You can write the terms by hand in the composer, or describe the card in plain language and let
-              the compiler draft them.
+              In the <Link href="/app">console</Link>, press + on the deck and describe the rein, or set the terms yourself.
+              Your wallet signs two transactions:
             </p>
-            <h3>The plain-language compiler</h3>
-            <p className="docp">
-              The dashboard&apos;s issue modal sends your sentence to Venice AI, which returns a plan of named
-              entities (&quot;USDC&quot;, &quot;Uniswap&quot;, &quot;aave&quot;) and numbers. The server then
-              resolves every name against its own verified registry (or Basescan, or your own pasted address), so the
-              model output can never place a raw address into a draft. The result is a <code>CardTerms</code> draft
-              you review and sign; nothing is issued until you do.
-            </p>
-            <Note>
-              The compiler only <b>names</b> tokens, protocols and merchants. Addresses come exclusively from the
-              trusted resolvers or your own text, with provenance shown on each chip (registry, Basescan, or your
-              input). A draft cannot smuggle a poisoned address even if the model tries.
-            </Note>
-            <h3>The client-signed ceremony</h3>
-            <p className="docp">
-              Issuance is a three-step prepare / sign / finalize so the server never holds your key:
-            </p>
-            <ul className="docul">
-              <li className="docli">
-                <b>prepare</b>: the server compiles the caveats, mints the agent key, and returns the exact unsigned
-                delegation struct.
-              </li>
-              <li className="docli">
-                <b>sign</b>: your embedded wallet signs the EIP-712 delegation in the browser.
-              </li>
-              <li className="docli">
-                <b>finalize</b>: the server verifies the signature recovers to your wallet, then persists the card
-                and returns its URL.
-              </li>
-            </ul>
+            <Code code={`# 1. bind a fresh key to the terms (deposit covers storage; the rest stays in the vault)
+create_rein { agent_key, label, terms }   attached: 0.02 NEAR
+
+# 2. add that key to your account, for the agent methods only
+AddKey ed25519:… FunctionCall { receiver: ${CONTRACT_ID}, methods: [pay, request_approval, issue_subrein], allowance: 0.25 NEAR }`} />
+            <Note>The agent&apos;s secret key is generated in your browser and shown once. Reins never stores it.</Note>
           </Section>
 
           {/* ---- Terms ---- */}
-          <Section id="terms" title="Card Terms">
-            <p className="docp">
-              Each term compiles to a delegation-framework enforcer caveat at the root of the delegation, so the
-              chain enforces the same limits the server checks. Below is the exact mapping
-              (<code>engine/src/compiler.ts</code>).
-            </p>
+          <Section id="terms" title="Rein Terms">
             <Table
-              head={["Term", "Meaning", "On-chain enforcer"]}
+              head={["Term", "Meaning", "Checked"]}
               rows={[
-                [
-                  <code key="a">pay.period</code>,
-                  "Budget per rolling window (amount + seconds, min 60s)",
-                  <code key="b">ERC20PeriodTransfer</code>,
-                ],
-                [<code key="a">pay.lifetime</code>, "Total USDC the card may ever move", <code key="b">ERC20TransferAmount</code>],
-                [<code key="a">contract.targets</code>, "Contracts the card may call", <code key="b">AllowedTargets</code>],
-                [<code key="a">contract.selectors</code>, "Method signatures the card may call", <code key="b">AllowedMethods</code>],
-                [<code key="a">expiry</code>, "Unix time after which nothing redeems", <code key="b">Timestamp</code>],
-                [
-                  <code key="a">maxUses</code>,
-                  "Redemption count (scaled to executions on-chain; server is the binding limit)",
-                  <code key="b">LimitedCalls</code>,
-                ],
-                [
-                  "revocation nonce",
-                  "Always present; bumping it nukes every card from this wallet",
-                  <code key="b">Nonce</code>,
-                ],
-                [
-                  "pay + contract",
-                  "A composite card; one group governs each redemption",
-                  <code key="b">LogicalOrWrapper</code>,
-                ],
+                [<code key="b">budget</code>, "Max spend per window (or lifetime when period_secs is 0)", "every rein up the chain"],
+                [<code key="p">period_secs</code>, "Window length; the window resets after it elapses", "every rein up the chain"],
+                [<code key="c">per_tx_cap</code>, "Largest single payment, approval or not", "every rein up the chain"],
+                [<code key="a">approval_above</code>, "Above this the agent must file a request", "the paying rein"],
+                [<code key="e">expires_at</code>, "Unix seconds after which the rein stops", "every rein up the chain"],
+                [<code key="u">max_uses</code>, "Payments over the rein's life", "every rein up the chain"],
+                [<code key="m">merchants</code>, "If set, the only accounts the rein may pay", "every rein up the chain"],
+                ["blocklist", "Accounts with a bonded report, unless you allowed them", "every payment"],
+                ["vault", "Your balance must cover the payment", "every payment"],
               ]}
             />
-            <Note>
-              <b>perTxMax</b> and <b>merchants</b> are not root caveats; they collide with the mandatory fee leg
-              there. They are server-side carve policy applied at redemption: the per-transaction max is backstopped
-              on-chain by the carved leaf&apos;s amount scope, while the merchant allowlist is enforced server-side.{" "}
-              <b>contract.tokens</b> and <b>contract.perTradeMax</b> additionally pin each ERC-20 allowance to an exact
-              spender and amount via byte-window <code>AllowedCalldata</code> caveats on that leaf.
-            </Note>
+          </Section>
+
+          {/* ---- Errors ---- */}
+          <Section id="errors" title="Error Codes">
+            <p className="docp">
+              <code>pay</code> panics with exactly one of these, and <code>preview_pay</code> returns the same code without
+              moving anything, so an agent can relay the reason instead of guessing.
+            </p>
+            <Table
+              head={["Code", "Meaning"]}
+              rows={[
+                ["unknown_key", "The signing key is not bound to a rein (never was, or revoked)"],
+                ["signer_must_be_owner", "The call was relayed through another contract"],
+                ["rein_not_active", "This rein or an ancestor is frozen or revoked"],
+                ["rein_expired", "Past expires_at"],
+                ["uses_exhausted", "max_uses reached"],
+                ["merchant_not_allowed", "Receiver not in the merchant lock"],
+                ["over_per_tx_cap", "Above the per-payment cap"],
+                ["over_budget", "Not enough left in this window, here or up the chain"],
+                ["receiver_blocked", "Receiver is on the shared blocklist for this owner"],
+                ["vault_insufficient", "The vault cannot cover it"],
+                ["needs_approval", "Above approval_above · use request_approval"],
+                ["self_payment", "Paying the owner or the contract itself"],
+                ["zero_amount", "Amount is zero"],
+              ].map(([c, m]) => [<code key={c}>{c}</code>, m])}
+            />
           </Section>
 
           {/* ---- Connect ---- */}
           <Section id="connect" title="Connecting an Agent">
             <p className="docp">
-              The card is served over MCP (Streamable HTTP). There are three connection lanes. The first two carry a
-              per-card credential directly; the third is OAuth, where the agent never holds the card secret.
+              The Reins MCP server runs next to the agent and signs with the rein&apos;s key. The{" "}
+              <Link href="/connect">connect page</Link> fills in the command for you.
             </p>
-            <div className="doclanes">
-              <div className="doclane">
-                <div className="doclanehd">
-                  <span className="lanek">A</span>
-                  <span className="lt">Secret in the URL path</span>
-                </div>
-                <p>
-                  Works everywhere, including credential-free clients like claude.ai web. The URL is the password,
-                  treat it like one.
-                </p>
-                <Code code={`claude mcp add --transport http keepercard \\
-  https://<host>/c/<card-secret>/mcp`} />
-              </div>
-              <div className="doclane">
-                <div className="doclanehd">
-                  <span className="lanek">B</span>
-                  <span className="lt">Bearer header</span>
-                </div>
-                <p>For clients that send an Authorization header. The bare endpoint, secret in the header.</p>
-                <Code code={`claude mcp add --transport http keepercard \\
-  https://<host>/mcp \\
-  --header "Authorization: Bearer <card-secret>"`} />
-              </div>
-              <div className="doclane">
-                <div className="doclanehd">
-                  <span className="lanek">C</span>
-                  <span className="lt">OAuth 2.1 (card-picker consent)</span>
-                </div>
-                <p>
-                  Add the bare endpoint with no credential. The client discovers the OAuth lane (RFC 9728 metadata on
-                  the 401), registers itself (dynamic client registration), and opens a browser; you sign in and pick
-                  which card to grant. The agent receives a short-lived, card-scoped, independently revocable token,
-                  never the raw secret. This is the lane OAuth-only clients such as ChatGPT require. Clients that
-                  finish OAuth out of band read the code off the consent screen: OpenClaw completes with{" "}
-                  <code>openclaw mcp login keepercard --code &lt;code&gt;</code>, and headless Hermes uses the same
-                  paste-back.
-                </p>
-                <Code code={`claude mcp add --transport http keepercard https://<host>/mcp`} />
-              </div>
-            </div>
-
-            <h3>Per-harness one-liners (Lane A)</h3>
-            <Code code={`codex     mcp add keepercard --url https://<host>/c/<secret>/mcp
-openclaw  mcp add keepercard --url https://<host>/c/<secret>/mcp --transport streamable-http  # flag required: omitting it defaults to SSE
-hermes    mcp add keepercard --url "https://<host>/c/<secret>/mcp"
-gemini    mcp add -t http keepercard https://<host>/c/<secret>/mcp
-goose     session --with-streamable-http-extension "https://<host>/c/<secret>/mcp"
-amp       mcp add keepercard https://<host>/c/<secret>/mcp
-droid     mcp add keepercard https://<host>/c/<secret>/mcp --type http`} />
-            <p className="docp">
-              Lanes A and B work in Cursor, VS Code, Gemini CLI, Windsurf, claude.ai custom connectors, or any MCP
-              client that speaks Streamable HTTP. For claude.ai web, paste the card URL under Customize → Connectors →
-              Add custom connector; for ChatGPT Developer Mode, add it as a No Authentication connector (or use Lane C
-              for a real auth story). The dashboard&apos;s connect panel renders a prefilled install affordance per
-              harness. Rotate the secret any time from the dashboard; the old URL dies instantly.
-            </p>
+            <Code code={`claude mcp add reins \\
+  -e REINS_OWNER=you.testnet \\
+  -e REINS_AGENT_KEY=ed25519:<agent-secret> \\
+  -- bun run <path-to-Reins>/packages/mcp/src/index.ts`} />
+            <Note>
+              The server asks you through MCP elicitation when the counterparty check says <i>warn</i>. A client without
+              elicitation gets a refusal and a message to ask you instead.
+            </Note>
           </Section>
 
           {/* ---- Tools ---- */}
           <Section id="tools" title="MCP Tools">
-            <p className="docp">
-              The tool list a card exposes <b>is</b> its permission surface: a pay-only card never sees{" "}
-              <code>execute</code>; a contract-only card never sees <code>pay</code>; a sub-cards-off card never sees{" "}
-              <code>issue_subcard</code>. The server is stateless, a fresh instance per request, identity = the card
-              credential.
-            </p>
             <Table
-              head={["Tool", "On", "Purpose"]}
+              head={["Tool", "What it does"]}
               rows={[
-                [<code key="t">card</code>, "Every card", "Live state: remaining budget, terms, expiry, recent charges, sub-cards, and the card's on-chain account (the root delegator that holds the USDC and receives contract-call output). Call it first."],
-                [<code key="t">pay</code>, "pay cards", "Send USDC on Base within limits; blocks until confirmed on-chain."],
-                [<code key="t">paid_fetch</code>, "pay cards", "Fetch a URL; on HTTP 402 (x402), pay automatically and return the content."],
-                [<code key="t">fiat_pay</code>, "pay + Stripe", "Buy over Visa rails (simulated) against the same budget; with settlement on, the receipt carries the on-chain tx."],
-                [<code key="t">card_credentials</code>, "pay + Stripe", "Reveal the test-mode virtual Visa for a merchant checkout; every card auto-links one on first need."],
-                [<code key="t">execute</code>, "contract cards", "Run scoped contract calls (approve + swap, stake, mint) atomically in one redemption."],
-                [<code key="t">issue_subcard</code>, "sub-cards on", "Mint a tighter child card for a sub-agent; omitted money terms inherit the parent's remaining budget; returns its URL."],
-                [<code key="t">revoke_subcard</code>, "sub-cards on", "Instantly kill a sub-card and its descendants (server-side)."],
-              ]}
+                ["rein_status", "Terms, what is left this window, the vault, pending approvals · call it first"],
+                ["check_counterparty", "allow / warn / block with reasons for a receiver"],
+                ["preview_payment", "The free preview_pay dry run"],
+                ["pay", "Guarded payment: refuses on block, asks you on warn, files a request above the threshold"],
+                ["approval_status", "State of a request the agent filed"],
+                ["issue_subrein", "A narrower rein for a sub-agent's public key"],
+                ["quote_cross_chain", "NEAR Intents 1Click dry quote · never moves funds"],
+              ].map(([t, d]) => [<code key={t}>{t}</code>, d])}
             />
-            <h3>Typed refusals</h3>
-            <p className="docp">
-              Refusals come back as <code>isError</code> with structured JSON naming the violated term, so an agent
-              can relay them honestly instead of guessing. The codes include:
-            </p>
+          </Section>
+
+          {/* ---- Keys ---- */}
+          <Section id="keys" title="Function-Call Key Limits">
             <ul className="docul">
+              <li className="docli">It can call only <code>pay</code>, <code>request_approval</code> and <code>issue_subrein</code> on the Reins contract.</li>
               <li className="docli">
-                <code>over_period_limit</code>, <code>merchant_not_allowed</code>, <code>price_exceeds_max</code> (pay
-                and paid_fetch)
+                It cannot attach a deposit. Every owner method requires at least 1 yoctoNEAR attached, so the key can never
+                withdraw, approve, unfreeze, change terms or override the blocklist — even if it were granted those names.
               </li>
+              <li className="docli">It cannot transfer NEAR, add keys or deploy code: NEAR refuses those for a function-call key.</li>
               <li className="docli">
-                <code>target_not_allowed</code>, <code>method_not_allowed</code>, <code>per_trade_exceeded</code>,{" "}
-                <code>token_not_allowed</code>, <code>spender_not_allowed</code> (execute)
-              </li>
-              <li className="docli">
-                <code>exceeds_parent_terms</code> (issue_subcard); <code>not_your_subcard</code> (revoke_subcard)
-              </li>
-              <li className="docli">
-                <code>card_frozen</code>, <code>no_fiat_card</code> (the fiat leg); <code>invalid_terms</code> (bad
-                input)
+                It spends gas from its allowance (0.25 NEAR by default). When the allowance runs out, the key stops signing;
+                <Link href="/settings"> Settings</Link> shows what is left on each key.
               </li>
             </ul>
+            <Note warn>Revoking a rein makes the key unknown to the contract. Also delete it from your account so it stops consuming allowance; the console does both.</Note>
           </Section>
 
-          {/* ---- Execute / contract cards ---- */}
-          <Section id="execute" title="Contract Cards">
+          {/* ---- Approvals ---- */}
+          <Section id="approvals" title="Owner Approvals">
             <p className="docp">
-              A card can be scoped to specific contract targets and method selectors instead of (or alongside) a USDC
-              budget. The agent calls <code>execute</code> with either <code>{`{target, method, args}`}</code> (the
-              server ABI-encodes the calldata) or <code>{`{target, data}`}</code> raw calldata for tuple/array/
-              multicall methods like Uniswap <code>exactInputSingle</code>.
+              A payment above <code>approval_above</code> (and within every other rule) becomes a request instead. You
+              approve it in <Link href="/settings">Settings</Link> with your wallet; the contract checks every other rule
+              again and pays. Requests expire after 24 hours, and a rein can hold at most 4 open ones.
             </p>
-            <ul className="docul">
-              <li className="docli">
-                Targets and selectors outside the card&apos;s declared scope are refused before anything reaches the
-                chain; the on-chain <code>AllowedTargets</code> / <code>AllowedMethods</code> enforcers check the same
-                scope again at redemption.
-              </li>
-              <li className="docli">
-                Method signatures are normalized to canonical form (<code>uint</code> → <code>uint256</code>) so the
-                encoder, the raw-data selector check, and the on-chain enforcer all agree.
-              </li>
-              <li className="docli">
-                A contract card can carry an <b>allowance token list</b> (<code>contract.tokens</code>: the only
-                tokens it may <code>approve</code>, each approval pinned on-chain to an exact spender and amount; the
-                listed tokens are auto-unioned into the card&apos;s targets) and a <b>per-trade ceiling</b>{" "}
-                (<code>contract.perTradeMax</code>, capping each USDC approval; v1 enforces the ceiling on the USDC /
-                settlement leg only, while non-USDC approvals stay exact-amount pinned).
-              </li>
-              <li className="docli">
-                For a call that needs a recipient (e.g. <code>exactInputSingle</code>&apos;s <code>recipient</code>),
-                the <code>card</code> tool surfaces the card&apos;s on-chain <code>account</code> (the root delegator
-                that holds the USDC and receives any output tokens), so the agent routes a swap&apos;s output there
-                itself rather than guessing or asking the user.
-              </li>
-              <li className="docli">
-                Contract calls carry no native ETH value in v1 (the carved leaf caps value at 0 on-chain); up to 5
-                calls batch atomically into one redemption.
-              </li>
-            </ul>
-            <Note>
-              Contract calls are not USDC-metered. Safety on a contract card is the target/method allowlist plus{" "}
-              <code>maxUses</code> and <code>expiry</code>. Pair contract scope with a <code>pay</code> cap in one
-              composite card when you want both rails under one delegation.
-            </Note>
           </Section>
 
-          {/* ---- Sub-cards & revocation ---- */}
-          <Section id="subcards" title="Sub-Cards & Revocation">
+          {/* ---- Sub-reins ---- */}
+          <Section id="subreins" title="Sub-Reins & Revocation">
             <p className="docp">
-              Sub-cards are ERC-7710 redelegations. An agent holding a card can mint a tighter child for a sub-agent
-              with <code>issue_subcard</code>; every term must fit inside the parent&apos;s (caps only narrow
-              downward, contract scope is subset-only, never silently inherited). <code>exceeds_parent_terms</code>{" "}
-              names the violating field. The chain enforces the same subset via the delegation chain.
+              An agent can split its allowance with <code>issue_subrein</code>: the child&apos;s budget and cap may only be
+              narrower, depth is at most 3 and a rein has at most 8 children. Spending by a sub-rein counts against every
+              ancestor. The sub-agent&apos;s key only works once you add it to your account, so an agent can split its
+              allowance but never mint a new one.
             </p>
-            <h3>Three layers of off-switch</h3>
+            <p className="docp">Revoking a rein revokes its whole subtree; <code>revoke_all</code> revokes every rein you own.</p>
+          </Section>
+
+          {/* ---- Guard ---- */}
+          <Section id="guard" title="Counterparty Guard">
             <Table
-              head={["Layer", "Effect", "Where"]}
+              head={["Signal", "Source", "Level"]}
               rows={[
-                ["Freeze", "Reversible pause; the card still answers card but refuses spends", "Server-side, instant"],
-                ["Revoke", "Permanent; the card and its whole sub-card subtree die", "On-chain disableDelegation, signed by your wallet"],
-                ["Nuke", "Kills every card and sub-card this wallet ever issued", "One on-chain NonceEnforcer bump"],
+                ["Shared blocklist", "Reins reports_of + is_blocked", "block"],
+                ["Named account does not exist", "RPC view_account", "block"],
+                ["Look-alike of a known merchant", "edit distance over a homoglyph skeleton", "block"],
+                ["Account younger than 7 days", "NEARBlocks account created time", "warn (info if allowlisted)"],
+                ["Contract code changed in 7 days", "archival RPC view_account, then and now", "warn"],
+                ["First payment to this account", "Reins pair_count", "warn (info if allowlisted)"],
               ]}
             />
+            <Note>A signal that cannot be read is reported as unavailable and never counts as risk or as safety.</Note>
             <p className="docp">
-              All three are user-operable from the dashboard. On-chain revoke and nuke are signed by your own embedded
-              wallet in the browser (an admin leaf delegation) and ride the relayer gaslessly. Revoking a parent kills
-              the subtree; the cascade is the demo money-shot, revoke the root and the whole tree dies on screen.
-            </p>
-            <Note>
-              An agent&apos;s own <code>revoke_subcard</code> is a server-side kill: instant, and the sub-card&apos;s
-              URL dies, but a sub-card cannot be disabled on-chain on its own (its on-chain delegator is the
-              parent&apos;s agent key). On-chain permanence for a whole branch comes from revoking the root card or
-              nuking.
-            </Note>
-          </Section>
-
-          {/* ---- Rails ---- */}
-          <Section id="rails" title="Payment Rails">
-            <p className="docp">Two payment rails run off one delegation, metered by the same enforcers.</p>
-            <h3>x402 (real, live)</h3>
-            <p className="docp">
-              <code>paid_fetch</code> answers an HTTP 402 challenge by paying through the card&apos;s 7710 delegation:
-              real x402 v2 flows on Base mainnet, USDC settled from your wallet through the 1Shot Public Relayer
-              (gasless, fee in USDC). KeeperCard also ships the first ERC-7710 x402 facilitator
-              (<code>/facilitator/verify</code>, <code>/settle</code>, <code>/supported</code> advertising{" "}
-              <code>assetTransferMethod: erc7710</code>) and a demo seller at <code>/demo/premium-data</code> whose 402
-              points back at it.
-            </p>
-            <h3>Stripe Issuing Visa (simulated)</h3>
-            <p className="docp">
-              <code>fiat_pay</code> and <code>card_credentials</code> drive a test-mode virtual Visa. When a charge is
-              authorized, Stripe calls KeeperCard&apos;s real-time auth webhook, which answers approve/decline from the
-              card&apos;s on-chain delegation state inside Stripe&apos;s hard 2-second window (read from a cached
-              snapshot, never an RPC call in the handler). A decline comes back typed, from the card&apos;s terms, not
-              the merchant.
-            </p>
-            <p className="docp">
-              With settlement enabled, an approved Visa charge then settles as a <b>real delegated USDC transfer</b>{" "}
-              on Base, through the same enforcers that meter the crypto rail. One budget, two rails. A charge whose
-              settlement cannot land parks <code>settlement_unconfirmed</code> and freezes the card rather than ever
-              releasing its budget.
-            </p>
-            <Note warn>
-              The Visa leg is <b>simulated by design</b>: Stripe test-mode Issuing, no real merchant, no KYC required
-              in test. It is labeled honestly everywhere it appears. The crypto rail and the on-chain settlement move
-              real USDC on Base mainnet.
-            </Note>
-            <p className="docp">
-              The demo merchant, <b>s0nder supply co.</b> at <code>/shop</code>, is a real storefront that accepts the
-              cards&apos; Visas. The catalog is priced at $5 or less because approved purchases move real USDC.
+              Anyone can report an account with a 0.1 NEAR bond and the sha256 of the evidence. Every owner&apos;s reins
+              refuse it unless that owner calls <code>set_allow</code>. See the <Link href="/guard">Guard console</Link>.
             </p>
           </Section>
 
-          {/* ---- Security ---- */}
-          <Section id="security" title="Security">
-            <ul className="docul">
-              <li className="docli">
-                <b>Custody.</b> Your funds stay in your wallet. The per-card agent key signs redelegations only; it
-                holds no assets and is encrypted at rest. You can export your wallet&apos;s private key from the
-                account menu at any time (through Privy&apos;s secure modal, rendered in a separate-domainiframe KeeperCard never reads) and walk away to any client.
-              </li>
-              <li className="docli">
-                <b>Dashboard auth.</b> Per-user Privy sessions, verified server-side against the app JWKS. At onboard,
-                the embedded wallet signs <code>attestpay-onboard:v1:&lt;did&gt;</code> to bind the wallet to that login;
-                every card route is then scoped to the authenticated user&apos;s own cards.
-              </li>
-              <li className="docli">
-                <b>Issuance integrity.</b> The server verifies the delegation signature recovers to the delegator
-                before persisting a card.
-              </li>
-              <li className="docli">
-                <b>Card secrets.</b> 256-bit, stored as a hash for auth and AES-256-GCM-encrypted at rest for the
-                reveal/rotate feature. The URL is a credential; rotate it like a password.
-              </li>
-              <li className="docli">
-                <b>Limits enforced twice.</b> Server-side at call time (typed refusals) and on-chain at redemption.
-                Period, lifetime, expiry, usage count and contract target/method have dedicated on-chain enforcers; the
-                per-transaction max and merchant allowlist are server-side policy, backstopped on-chain by the carved
-                leaf&apos;s amount scope.
-              </li>
-              <li className="docli">
-                <b>MCP surface hardening.</b> Host allowlist (DNS-rebinding guard), per-card and bad-secret rate
-                limits, a 1 MiB body cap, an SSRF guard on <code>paid_fetch</code> targets, secrets never echoed in
-                errors or logs.
-              </li>
-              <li className="docli">
-                <b>OAuth tokens.</b> Opaque, card-scoped, hash-stored beside the card secrets, audience-pinned (RFC
-                8707), and revoked the instant the card is, cascading to the subtree.
-              </li>
-            </ul>
+          {/* ---- Intents ---- */}
+          <Section id="intents" title="Cross-Chain Quotes">
+            <p className="docp">
+              <code>quote_cross_chain</code> asks the NEAR Intents 1Click API for a <code>dry: true</code> quote: what paying a
+              merchant on another chain would cost from NEAR. No deposit address is issued and nothing moves. Intents has no
+              testnet, so quotes are mainnet prices.
+            </p>
           </Section>
 
-          {/* ---- SigNoz Observability ---- */}
-          <Section id="webhooks" title="Webhooks & Events">
-            <p className="docp">
-              Every card action, confirmed payment and low-budget alert is an event. Create webhooks in Settings or via <code>POST /api/webhooks</code>; each delivery is a JSON
-              POST with <code>X-KeeperCard-Event</code>, <code>X-KeeperCard-Delivery</code> and{" "}
-              <code>X-KeeperCard-Signature: t=&lt;unix&gt;,v1=&lt;hex&gt;</code>, where <code>v1</code> is HMAC-SHA256 over{" "}
-              <code>{"${t}.${body}"}</code> with the secret shown once at creation. Retries: 30s, 2m, 10m, 1h, 6h, then dead
-              (retryable by hand). Endpoints must be https on a public host.
-            </p>
+          {/* ---- Contract ---- */}
+          <Section id="contract" title="Contract Methods">
             <Table
-              head={["Event", "When"]}
+              head={["Method", "Who", "Notes"]}
               rows={[
-                [<code key="e">card.issued · frozen · unfrozen · revoked · nuked · deleted · secret_rotated</code>, "Card lifecycle"],
-                [<code key="e">charge.confirmed</code>, "A payment confirmed on Base"],
-                [<code key="e">budget.low</code>, "Once per period when remaining budget ≤ the card's threshold (default 20%)"],
-              ]}
+                ["deposit / withdraw", "owner", "attach NEAR / 1 yocto"],
+                ["create_rein / create_subrein", "owner", "attach storage (about 0.02 NEAR)"],
+                ["update_terms · freeze · unfreeze · revoke · revoke_all", "owner", "1 yocto"],
+                ["approve_request · reject_request · set_allow", "owner", "1 yocto"],
+                ["pay · request_approval · issue_subrein", "agent key", "no deposit"],
+                ["report · retract_report", "anyone", "0.1 NEAR bond · 1 yocto"],
+                ["preview_pay · get_rein · reins_of · rein_for_key · vault_of", "view", "free"],
+                ["pending_requests_of · reports_of · is_blocked · pair_count · stats", "view", "free"],
+              ].map(([m, w, n]) => [<code key={m}>{m}</code>, w, n])}
             />
           </Section>
 
-          <Section id="teams" title="Teams & Roles">
+          {/* ---- Events ---- */}
+          <Section id="events" title="Events">
             <p className="docp">
-              A card belongs to one wallet; a team is an access layer over it. Invite wallets by address (they attach when that
-              wallet signs in), assign cards, and let roles govern what members may do:
-            </p>
-            <Table
-              head={["Role", "May"]}
-              rows={[
-                ["viewer", "Read cards, charges and receipts"],
-                ["member", "+ freeze / unfreeze, alert thresholds"],
-                ["admin", "+ assign and unassign cards, manage members below owner"],
-                ["owner", "+ rename and delete the team"],
-              ]}
-            />
-            <Note warn>
-              No role can issue a card, reveal or rotate its URL, or revoke it on-chain: those need the owning wallet&apos;s
-              signature or expose the bearer credential, and a role is not a key. Freeze is the team-level kill switch.
-            </Note>
-          </Section>
-
-          <Section id="audit" title="Audit Log">
-            <p className="docp">
-              Who did what to which card, from which lane (ops token, Privy user, agent card, system), with detail and IP.
-              Scoped to the user&apos;s own actions plus anything done to their cards; the operator sees everything with{" "}
-              <code>?all=1</code>. Filter by card, action and time; export as JSON or CSV (<code>?format=csv</code>).
+              Every state change logs one NEP-297 line, <code>EVENT_JSON:&#123;&quot;standard&quot;:&quot;reins&quot;,…&#125;</code>:
+              rein_created, payment, payment_failed, approval_requested, approved, rejected, frozen, unfrozen, revoked,
+              terms_updated, deposit, withdraw, reported, report_retracted, allow_set. The contract keeps no payment history
+              in state; the events are the history.
             </p>
           </Section>
 
-          <Section id="sdk" title="SDK">
-            <p className="docp">
-              <code>@attestpay/sdk</code> (<code>packages/sdk</code>) is a typed client over the whole API — cards, KeeperHub
-              executions and receipts, webhooks, events, audit, alerts, teams — plus the pure verifier every integrator
-              needs: <code>verifyWebhookSignature</code> (WebCrypto). Typed refusals arrive as <code>KeeperCardError</code>{" "}
-              with the server&apos;s code.
-            </p>
-            <pre className="doccode">{`import { KeeperCard } from "@attestpay/sdk";
+          {/* ---- SDK ---- */}
+          <Section id="sdk" title="SDK & CLI">
+            <Code code={`import { ReinsClient, AgentClient, checkCounterparty } from "@reins/sdk";
 
-const kc = new KeeperCard({ baseUrl: "https://api.example.com", token: PRIVY_ACCESS_TOKEN });
-const cards = await kc.cards.list();
-await kc.cards.freeze(cards[0].card_id);
+const reins = new ReinsClient("${CONTRACT_ID}");
+await reins.previewPay(owner, agentPublicKey, "shop.testnet", amountYocto);
 
-const receipts = await kc.keeperhub.receipts(cards[0].card_id);`}</pre>
+const agent = new AgentClient(owner, agentSecret, provider, "${CONTRACT_ID}");
+await agent.guardedPay({ receiver: "shop.testnet", amountNear: "0.05", askHuman });`} />
+            <Code code={`bun run reins status        # vault, reins, pending approvals
+bun run reins approve 3     # approve request 3 with your full-access key
+bun run reins panic         # revoke every rein`} />
           </Section>
 
-          <Section id="signoz-overview" title="SigNoz Observability">
-            <p className="docp">
-              KeeperCard is <b>fully instrumented with OpenTelemetry</b> and ships <b>traces, metrics, and logs</b> to{" "}
-              <b>SigNoz Cloud</b> (and can self-host locally via the included <code>casting.yaml</code>). Every card
-              issuance, every payment, every refusal, every API call — all visible in SigNoz.
-            </p>
-
-            <h3>Architecture</h3>
-            <div className="docdiagram">
-              {`keepercard-server (Bun ─preload otel.ts)
-   │
-   ├─ @opentelemetry/auto-instrumentations-node
-   │  · HTTP spans (every API call)
-   │  · fetch spans (outbound requests)
-   │  · DNS, filesystem, database
-   │
-   ├─ Manual business spans (trace API)
-   │  · stripe_webhook_auth   (approve/decline decision)
-   │  · 1shot_relayer_redeem  (on-chain payment)
-   │  · nl_compile            (AI card compilation)
-   │  · reconcile_sweep       (stuck charge resolution)
-   │  · fiat_settle_sweep     (Visa→USDC settlement)
-   │
-   ├─ Custom metrics (Meter API)
-   │  · counters: cards_issued, charges, errors, usdc_spent
-   │  · gauge: active_cards
-   │
-   ├─ Structured logs (Logger API)
-   │  · card_event: issued, frozen, revoked, nuked, onboarded
-   │  · charge_event: confirmed, refused, pending
-   │  · operation: every API error with route, method, status
-   │
-   └─ OTLP HTTP exporter  →  SigNoz Cloud (or local :4318)`}
-            </div>
-
-            <h3>Env vars (already set on Railway)</h3>
-            <Code code={`OTEL_EXPORTER_OTLP_ENDPOINT=https://ingest.us2.signoz.cloud
-OTEL_EXPORTER_OTLP_HEADERS=signoz-ingestion-key=YOUR_KEY
-OTEL_TRACES_EXPORTER=otlp
-OTEL_METRICS_EXPORTER=otlp
-OTEL_LOGS_EXPORTER=otlp`} />
-            <p className="docp">
-              The OTel SDK initializes early via Bun <code>--preload</code> (<code>packages/server/src/otel.ts</code>)
-              so auto-instrumentation wraps every module from boot. The engine package (<code>packages/engine/src/telemetry.ts</code>)
-              declares all custom metrics and structured log functions — 5 counters, 2 log emitters, available for any
-              SigNoz dashboard panel.
-            </p>
-          </Section>
-
-          <Section id="signoz-traces" title="Traces — Distributed Tracing">
-            <p className="docp">
-              Every API request is wrapped in a root span by Hono middleware (<code>app.ts</code>) with attributes for
-              route pattern, HTTP method, URL, and response status code. Inside those (and running on their own
-              intervals), six custom business-logic spans carry domain-specific attributes.
-            </p>
-
-            <h3>Route-level spans (every request)</h3>
-            <p className="docp">
-              The Hono <code>app.use(&quot;*&quot;, ...)</code> middleware creates a span for every request, named{" "}
-              <code>{'HTTP {METHOD} {ROUTE}'}</code>. Navigate to <b>SigNoz → Traces</b>, filter by{" "}
-              <code>service.name = keepercard-server</code>, and see every API call with its duration, status, and route
-              pattern.
-            </p>
-
-            <h3>stripe_webhook_auth</h3>
-            <p className="docp">
-              Fires when Stripe calls the real-time auth webhook. Attributes: <code>decision</code> (approve/decline),{" "}
-              <code>card_id</code>, <code>amount</code>, <code>merchant</code>. Traces the full auth decision flow
-              inside Stripe&apos;s 2-second window.
-            </p>
-
-            <h3>1shot_relayer_redeem</h3>
-            <p className="docp">
-              Fires on every on-chain payment. Attributes: <code>usdc_amount</code> (string), <code>gas_fee_usdc</code>,{" "}
-              <code>memo</code>, <code>tx_hash</code>, <code>card_id</code>. Shows the full lifecycle of a USDC
-              redemption through the 1Shot Public Relayer.
-            </p>
-
-            <h3>nl_compile</h3>
-            <p className="docp">
-              Fires when Venice AI compiles a plain-language card request. Attributes: <code>prompt_tokens</code>,{" "}
-              <code>completion_tokens</code>, <code>model</code>. Tracks AI usage for cost monitoring.
-            </p>
-
-            <h3>reconcile_sweep</h3>
-            <p className="docp">
-              Runs on a configurable interval (default 5 min). Attributes: <code>reconciled</code> (count),{" "}
-              <code>still_pending</code> (count). Resolves stuck pending charges against chain truth.
-            </p>
-
-            <h3>fiat_settle_sweep</h3>
-            <p className="docp">
-              Runs on a configurable interval (default 60s). Attributes: <code>settled</code> (count),{" "}
-              <code>left</code> (count). Settles approved Visa charges as on-chain USDC transfers.
-            </p>
-          </Section>
-
-          <Section id="signoz-metrics" title="Metrics — Product KPIs">
-            <p className="docp">
-              Five custom counters are available in SigNoz Metrics. Navigate to <b>SigNoz → Metrics</b> and search for
-              any of the following metric names to build dashboard panels.
-            </p>
-
-            <Table
-              head={["Metric Name", "Type", "Description"]}
-              rows={[
-                [<code key="m">keepercard_cards_issued_total</code>, "Counter", "Total cards issued across all users (root + sub-cards). Increments on issue, finalize, and sub-card mint."],
-                [<code key="m">keepercard_usdc_spent_total</code>, "Counter", "Total USDC spent across all confirmed redemptions and fiat settlements. The dollar volume metric."],
-                [<code key="m">keepercard_active_cards</code>, "UpDownCounter", "Current live cards (issued − revoked). A gauge: add 1 on issue, subtract 1 on revoke/nuke."],
-                [<code key="m">keepercard_charges_total</code>, "Counter", "Total charges processed (confirmed + pending + failed). Payment throughput metric."],
-                [<code key="m">keepercard_errors_total</code>, "Counter", "Total API-level errors (403 refusals, 422 validation errors, 502 relay failures, 500 exceptions)."],
-              ]}
-            />
-
-            <p className="docp">
-              These metrics are created in <code>packages/engine/src/telemetry.ts</code> using the OpenTelemetry Metrics
-              API and exported via OTLP HTTP to SigNoz. They appear in the Metrics explorer under their metric names,
-              prefixed by the engine package.
-            </p>
-
-            <h3>Building a metric panel</h3>
-            <p className="docp">
-              In SigNoz, create a new dashboard, click <b>New Panel</b>, choose <b>Time Series</b>, then switch to the{" "}
-              <b>ClickHouse</b> query tab. The SigNoz metrics storage uses the{" "}
-              <code>signoz_metrics.distributed_samples_v2</code> table. Example query for cards issued:
-            </p>
-            <Code code={`SELECT toStartOfInterval(
-         toDateTime(intDiv(timestamp_ms, 1000)),
-         INTERVAL 5 MINUTE) AS ts,
-       sum(value) AS value
-FROM signoz_metrics.distributed_samples_v2
-WHERE metric_name = 'keepercard_cards_issued_total'
-  AND ts BETWEEN $start_datetime AND $end_datetime
-GROUP BY ts
-ORDER BY ts`} />
-          </Section>
-
-          <Section id="signoz-logs" title="Structured Logs — Event-Driven Observability">
-            <p className="docp">
-              KeeperCard emits structured logs for every significant card lifecycle event. Navigate to <b>SigNoz → Logs</b>{" "}
-              and filter by <code>card_event</code>, <code>charge_event</code>, <code>refusal_reason</code>, or{" "}
-              <code>operation</code> to see exactly what happened.
-            </p>
-
-            <h3>Card lifecycle events</h3>
-            <Table
-              head={["Attribute", "Events", "Context"]}
-              rows={[
-                [<code key="m">card_event</code>, <code key="v">issued, frozen, unfrozen, revoked, nuked, url_revealed, secret_rotated, onboarded</code>, "Every card lifecycle transition with card_id and extra attributes (k_agent_address, address, has_auth7702 for onboarded)."],
-                [<code key="m">charge_event</code>, <code key="v">confirmed</code>, "Successful payments with amount (string), kind (crypto/fiat), and card_id."],
-                [<code key="m">refusal_reason</code>, <code key="v">over_period_limit, merchant_not_allowed, price_exceeds_max, card_frozen, …</code>, "Typed refusal with attempted_amount and card_id. Every declined payment leaves a structured trace."],
-                [<code key="m">operation</code>, <code key="v">{'HTTP {METHOD} {ROUTE}'}</code>, "API error logs with status code, error_message, and route info. Every 403/422/502/500 is logged."],
-              ]}
-            />
-
-            <h3>Example log searches</h3>
-            <ul className="docul">
-              <li className="docli"><code>card_event: &quot;issued&quot;</code> — see every card being created in real-time</li>
-              <li className="docli"><code>card_event: &quot;revoked&quot;</code> — track card revocations</li>
-              <li className="docli"><code>refusal_reason: *</code> — all payment refusals with typed reasons</li>
-              <li className="docli"><code>charge_event: &quot;confirmed&quot;</code> — successful payments with amounts</li>
-              <li className="docli"><code>operation: *</code> — all API errors grouped by operation</li>
-            </ul>
-
-            <p className="docp">
-              Logs are emitted using the OpenTelemetry Logger API (<code>@opentelemetry/api-logs</code>) through the{" "}
-              <code>logger.emit()</code> function. Each log carries its <code>severityText</code> (INFO, WARN, ERROR)
-              and structured attributes that SigNoz indexes automatically.
-            </p>
-          </Section>
-
-          <Section id="signoz-dashboard" title="SigNoz Dashboard & ClickHouse Queries">
-            <p className="docp">
-              Create a KeeperCard dashboard in SigNoz with panels for every metric and trace attribute. Below are the
-              ClickHouse queries for each panel type.
-            </p>
-
-            <h3>Panel 1: Cards Issued Over Time</h3>
-            <p className="docp">
-              Panel Type: <b>Time Series</b>. Shows the rate of card issuances over time.
-            </p>
-            <Code code={`SELECT toStartOfInterval(
-         toDateTime(intDiv(timestamp_ms, 1000)),
-         INTERVAL 5 MINUTE) AS ts,
-       sum(value) AS value
-FROM signoz_metrics.distributed_samples_v2
-WHERE metric_name = 'keepercard_cards_issued_total'
-  AND ts BETWEEN $start_datetime AND $end_datetime
-GROUP BY ts
-ORDER BY ts`} />
-
-            <h3>Panel 2: Active Cards (Gauge)</h3>
-            <p className="docp">
-              Panel Type: <b>Value</b> (big number). Shows the current live card count.
-            </p>
-            <Code code={`SELECT sum(value) AS active_cards
-FROM signoz_metrics.distributed_samples_v2
-WHERE metric_name = 'keepercard_active_cards'
-  AND timestamp_ms > toUnixTimestamp(now()) * 1000 - 60000`} />
-
-            <h3>Panel 3: USDC Spent</h3>
-            <p className="docp">
-              Panel Type: <b>Time Series</b>. Tracks cumulative USDC volume.
-            </p>
-            <Code code={`SELECT toStartOfInterval(
-         toDateTime(intDiv(timestamp_ms, 1000)),
-         INTERVAL 5 MINUTE) AS ts,
-       sum(value) AS value
-FROM signoz_metrics.distributed_samples_v2
-WHERE metric_name = 'keepercard_usdc_spent_total'
-  AND ts BETWEEN $start_datetime AND $end_datetime
-GROUP BY ts
-ORDER BY ts`} />
-
-            <h3>Panel 4: API Error Rate</h3>
-            <p className="docp">
-              Panel Type: <b>Time Series</b>. Track error spikes.
-            </p>
-            <Code code={`SELECT toStartOfInterval(
-         toDateTime(intDiv(timestamp_ms, 1000)),
-         INTERVAL 5 MINUTE) AS ts,
-       sum(value) AS errors
-FROM signoz_metrics.distributed_samples_v2
-WHERE metric_name = 'keepercard_errors_total'
-  AND ts BETWEEN $start_datetime AND $end_datetime
-GROUP BY ts
-ORDER BY ts`} />
-
-            <h3>Panel 5: API Request Duration by Route</h3>
-            <p className="docp">
-              Panel Type: <b>Time Series</b>. Uses trace data to show P99 latency per API route.
-            </p>
-            <Code code={`SELECT toStartOfInterval(timestamp, INTERVAL 5 MINUTE) AS ts,
-       attributes_string['http.route'] AS route,
-       avg(durationNano) / 1000000 AS avg_ms
-FROM signoz_traces.distributed_signoz_index_v2
-WHERE resources_string['service.name'] = 'keepercard-server'
-  AND ts BETWEEN $start_datetime AND $end_datetime
-GROUP BY ts, route
-ORDER BY ts`} />
-
-            <Note>
-              The <code>bodyAttributes</code> access pattern varies by SigNoz version. In newer versions, use{" "}
-              <code>bodyAttributes[&apos;http.route&apos;]</code>. The <code>$start_datetime</code> and{" "}
-              <code>$end_datetime</code> variables are automatically provided by the SigNoz dashboard panel builder.
-            </Note>
-          </Section>
-
-          <Section id="signoz-mcp" title="SigNoz MCP — AI-Agent Observability">
-            <p className="docp">
-              The included <code>casting.yaml</code> ships a <b>SigNoz MCP server</b> alongside the SigNoz stack. This
-              lets your AI agent query traces, logs, and metrics directly — and even create dashboards and alerts
-              autonomously.
-            </p>
-
-            <h3>Connect your agent to SigNoz MCP</h3>
-            <Code code={`# Self-hosted (from casting.yaml):
-claude mcp add signoz http://localhost:8000 \\
-  --header "Authorization: Bearer attestpay_mcp_dev"
-
-# SigNoz Cloud (API-based):
-claude mcp add signoz https://signoz.io/api/mcp \\
-  --header "Authorization: Bearer $YOUR_SIGNOZ_API_KEY"`} />
-
-            <h3>Available MCP tools</h3>
-            <p className="docp">
-              Once connected, your agent can use SigNoz MCP tools for observability workflows:
-            </p>
-            <ul className="docul">
-              <li className="docli">
-                <b>signoz_search_docs</b> — Search SigNoz documentation for guides and references.
-              </li>
-              <li className="docli">
-                <b>signoz_create_dashboard</b> — Create new dashboards with panels for KeeperCard metrics.
-              </li>
-              <li className="docli">
-                <b>signoz_modify_dashboard</b> — Update existing dashboard panels and configurations.
-              </li>
-              <li className="docli">
-                <b>signoz_create_alert</b> — Set up alerts for error rate spikes, card issuance stalls, etc.
-              </li>
-              <li className="docli">
-                <b>signoz_investigate_alert</b> — Deep-dive into alert-triggered incidents with neighbor signals.
-              </li>
-              <li className="docli">
-                <b>signoz_generate_query</b> — Generate ClickHouse queries for KeeperCard observability data.
-              </li>
-              <li className="docli">
-                <b>signoz_explain_dashboard</b> — Understand existing dashboard layouts and panel semantics.
-              </li>
-              <li className="docli">
-                <b>signoz_manage_views</b> — Create and manage saved views for quick data exploration.
-              </li>
-            </ul>
-
-            <p className="docp">
-              Example: ask your agent <i>&quot;Create a SigNoz dashboard for KeeperCard showing cards issued, USDC spent,
-              and API error rate&quot;</i> — it will use the MCP tools to build the entire dashboard without you
-              touching the SigNoz UI.
-            </p>
-          </Section>
-
-          <Section id="signoz-alerts" title="Alerts & Self-Hosting">
-            <h3>Recommended alerts</h3>
-            <p className="docp">
-              Set up these alerts in SigNoz to monitor KeeperCard health:
-            </p>
-            <Table
-              head={["Alert", "Condition", "Severity"]}
-              rows={[
-                ["High Error Rate", <><code key="a">keepercard_errors_total</code> rate &gt; 10/min for 5 min</>, "Critical"],
-                ["No Cards Issued", <><code key="a">keepercard_cards_issued_total</code> has no new value for 30 min</>, "Warning"],
-                ["High API Latency", <>P99 HTTP duration &gt; 5000ms for 5 min</>, "Warning"],
-                ["Refusal Spike", <>Log count with <code>refusal_reason:*</code> &gt; 20/min</>, "Warning"],
-                ["Charge Failure", <><code>charge_event:confirmed</code> rate drops by 50% vs previous hour</>, "Critical"],
-              ]}
-            />
-
-            <h3>Self-hosted SigNoz (local development)</h3>
-            <p className="docp">
-              The repo includes a <code>casting.yaml</code> for deploying SigNoz locally using Foundry. This is perfect
-              for development and testing without sending telemetry to the cloud.
-            </p>
-            <Code code={`# Deploy the full SigNoz stack:
-foundryctl cast -f casting.yaml --locked
-
-# SigNoz UI:    http://localhost:3301
-# OTLP HTTP:    http://localhost:4318
-# SigNoz MCP:   http://localhost:8000
-
-# Then set the server env:
-OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
-OTEL_TRACES_EXPORTER=otlp
-OTEL_METRICS_EXPORTER=otlp
-OTEL_LOGS_EXPORTER=otlp`} />
-            <p className="docp">
-              The <code>casting.yaml.lock</code> pins every Docker image to its content digest, ensuring{" "}
-              <b>reproducible deployments</b>. Judges can run <code>foundryctl cast -f casting.yaml --locked</code> to
-              reproduce the exact SigNoz environment used during development.
-            </p>
-
-            <h3>Stack components</h3>
-            <Table
-              head={["Service", "Image", "Purpose"]}
-              rows={[
-                ["ClickHouse", <code key="c">clickhouse/clickhouse-server:24.12</code>, "Time-series database storing all traces, metrics, and logs"],
-                ["OTel Collector", <code key="c">signoz/signoz-otel-collector:0.119.3</code>, "Receives OTLP from KeeperCard and writes to ClickHouse"],
-                ["Query Service", <code key="c">signoz/query-service:0.81.0</code>, "SigNoz backend: API for dashboards, alerts, and queries"],
-                ["Frontend", <code key="c">signoz/frontend:0.81.0</code>, "SigNoz Web UI at port 3301"],
-                ["MCP Server", <code key="c">signoz/mcp-server:latest</code>, "AI-agent observability: expose SigNoz tools to your agent"],
-              ]}
-            />
-
-            <Note>
-              The self-hosted stack requires <b>4 GB RAM</b>, <b>2 CPU cores</b>, and <b>20 GB disk</b> for ClickHouse
-              data. For production, use SigNoz Cloud at{" "}
-              <a href="https://signoz.io" target="_blank" rel="noreferrer">signoz.io</a> — the same OTLP exporter
-              configuration works with just a different endpoint and ingestion key.
-            </Note>
-          </Section>
-
-          {/* ---- API reference ---- */}
-          <Section id="api" title="API Reference">
-            <p className="docp">
-              The server is one Hono process. The dashboard API lives under <code>/api</code>; the MCP endpoint,
-              OAuth lane, x402 facilitator and demo surfaces sit at the root.
-            </p>
-            <h3>Auth lanes (every /api route)</h3>
-            <ul className="docul">
-              <li className="docli">
-                <b>Admin</b> (<code>Authorization: Bearer &lt;ATTESTPAY_ADMIN_TOKEN&gt;</code>): full access, server-side
-                scripts only, never shipped to a browser.
-              </li>
-              <li className="docli">
-                <b>Privy</b> (<code>Authorization: Bearer &lt;Privy access token&gt;</code>): verified offline against
-                the app JWKS; every route scoped to the authenticated user.
-              </li>
-            </ul>
-            <h3>Dashboard API (/api)</h3>
-            <Table
-              head={["Method · Path", "Purpose"]}
-              rows={[
-                [<code key="p">POST /onboard</code>, "Register the embedded wallet + its 7702 auth + onboard proof"],
-                [<code key="p">POST /cards/prepare</code>, "Compile caveats, mint the agent key, return the unsigned delegation"],
-                [<code key="p">POST /cards/finalize</code>, "Attach the browser signature, persist the card, return its URL"],
-                [<code key="p">POST /cards/compile</code>, "Venice NL → draft CardTerms (never issues)"],
-                [<code key="p">GET /cards</code>, "List the user's cards"],
-                [<code key="p">GET /cards/:id</code>, "Card detail + charge ledger"],
-                [<code key="p">GET /tree</code>, "The card → sub-card tree"],
-                [<code key="p">GET /cards/:id/url</code>, "Reveal the card URL"],
-                [<code key="p">POST /cards/:id/rotate</code>, "Rotate the card secret (old URL dies)"],
-                [<code key="p">GET /cards/:id/fiat</code>, "The linked test-mode Visa (owner view)"],
-                [<code key="p">POST /cards/:id/freeze · /unfreeze</code>, "Reversible server-side pause / resume"],
-                [<code key="p">POST /cards/:id/revoke/prepare · /finalize</code>, "Client-signed on-chain revoke (sub-cards die server-side)"],
-                [<code key="p">POST /nuke/prepare · /finalize</code>, "Client-signed cascade nuke of every card"],
-                [<code key="p">DELETE /cards/:id</code>, "Bookkeeping removal of a dead card + its subtree"],
-                [<code key="p">GET /oauth/request · POST /oauth/approve · /deny</code>, "The card-picker consent backend"],
-                [<code key="p">POST /webhooks · GET /webhooks · DELETE /webhooks/:id · POST /webhooks/:id/test · /pause · GET /webhooks/:id/deliveries</code>, "Webhook CRUD, test delivery, delivery log and retry"],
-                [<code key="p">GET /events · GET /audit[?format=csv] · GET/PUT /cards/:id/alerts</code>, "Event outbox, audit export, budget-alert threshold"],
-                [<code key="p">POST /teams · GET /teams · GET/PATCH/DELETE /teams/:id · POST/DELETE /teams/:id/members · POST /cards/:id/team</code>, "Teams, membership by wallet address, card assignment"],
-              ]}
-            />
-            <h3>OAuth 2.1 (self-hosted authorization server)</h3>
-            <p className="docp">
-              Public clients, PKCE S256, auth-code + rotating refresh, dynamic client registration. Tokens are opaque
-              (<code>glsp_at_</code> access, <code>glsp_rt_</code> refresh), audience-pinned, and die with the card.
-            </p>
-            <Table
-              head={["Endpoint", "Spec"]}
-              rows={[
-                [<code key="o">GET /.well-known/oauth-protected-resource/mcp</code>, "RFC 9728 protected-resource metadata"],
-                [<code key="o">GET /.well-known/oauth-authorization-server</code>, "RFC 8414 AS metadata"],
-                [<code key="o">POST /register</code>, "RFC 7591 dynamic client registration"],
-                [<code key="o">GET /authorize</code>, "Validates, then 302s to the dashboard card-picker"],
-                [<code key="o">POST /token</code>, "authorization_code + refresh_token grants, PKCE S256"],
-                [<code key="o">POST /revoke</code>, "RFC 7009 revocation (kills the whole token family)"],
-              ]}
-            />
-            <h3>MCP, facilitator + demo</h3>
-            <Table
-              head={["Endpoint", "Purpose"]}
-              rows={[
-                [<code key="m">ALL /c/:secret/mcp</code>, "Lane A: secret in the path"],
-                [<code key="m">ALL /mcp</code>, "Lane B (bearer) + Lane C (OAuth token)"],
-                [<code key="m">GET /supported · POST /verify · /settle</code>, "The ERC-7710 x402 facilitator (under /facilitator)"],
-                [<code key="m">GET /demo/premium-data</code>, "x402-protected demo seller (0.01 USDC)"],
-                [<code key="m">GET /shop/products · POST /shop/checkout</code>, "The demo merchant API"],
-                [<code key="m">GET /health</code>, "Liveness + engine version"],
-              ]}
-            />
-          </Section>
-
-          {/* ---- Self-hosting ---- */}
-          <Section id="selfhost" title="Self-Hosting">
-            <p className="docp">
-              A Bun monorepo, three packages: <code>engine</code> (the pure card engine), <code>server</code> (Hono:
-              REST + MCP + facilitator + Stripe webhook + demo shop) and <code>dashboard</code> (Next.js). Real money
-              moves on Base mainnet, so use small budgets.
-            </p>
-            <Code code={`bun install
-cp .env.example .env          # then set the two required vars below
-
-bun dev                       # server on :4070
-bun run --cwd packages/dashboard dev   # dashboard on :4071`} />
-            <h3>Required environment</h3>
-            <Table
-              head={["Var", "Purpose"]}
-              rows={[
-                [<code key="e">ATTESTPAY_MASTER_KEY</code>, "32-byte hex key; encrypts agent keys + card secrets at rest"],
-                [<code key="e">ATTESTPAY_ADMIN_TOKEN</code>, "Ops bearer token for the management API (server-side only)"],
-                [<code key="e">ATTESTPAY_PRIVY_APP_ID</code>, "Dashboard lane: enables per-user Privy auth against the app JWKS"],
-              ]}
-            />
-            <h3>Common optional environment</h3>
-            <Table
-              head={["Var", "Purpose"]}
-              rows={[
-                [<code key="e">ATTESTPAY_PUBLIC_MCP_BASE</code>, "Public origin for card URLs (also arms the MCP Host allowlist)"],
-                [<code key="e">ATTESTPAY_CORS_ORIGINS</code>, "Comma-separated allowed origins for the API + shop"],
-                [<code key="e">STRIPE_SECRET_KEY</code>, "Stripe TEST-mode key (sk_test_/rk_test_ only); enables the fiat leg"],
-                [<code key="e">ATTESTPAY_STRIPE_WEBHOOK_SECRET</code>, "Real-time auth webhook secret; unset = fiat leg disabled (503)"],
-                [<code key="e">ATTESTPAY_FIAT_SETTLEMENT</code>, "1 = approved Visa charges settle on-chain as real USDC"],
-                [<code key="e">VENICE_API_KEY · VENICE_MODEL</code>, "Enables /cards/compile; pin the model id"],
-                [<code key="e">ATTESTPAY_DASHBOARD_BASE</code>, "Dashboard origin hosting the OAuth consent page"],
-                [<code key="e">ATTESTPAY_RPC_URL · NEXT_PUBLIC_BASE_RPC</code>, "Base RPC for server + client reads (default mainnet.base.org)"],
-                [<code key="e">ATTESTPAY_DB_PATH</code>, "SQLite path (default .dev/attestpay.sqlite)"],
-                [<code key="e">ATTESTPAY_ALLOWED_HOSTS</code>, "Extra Host headers accepted on the MCP endpoint (e.g. a platform fallback domain)"],
-                [<code key="e">BASESCAN_API_KEY</code>, "Verified-contract labels from Basescan when resolving compiled drafts"],
-                [<code key="e">ATTESTPAY_TRUST_PROXY_HOPS</code>, "Trusted proxy hops for client-IP rate limiting (default 1 = Railway edge)"],
-                [<code key="e">ATTESTPAY_MCP_RATE_LIMIT · ATTESTPAY_MCP_BAD_SECRET_LIMIT</code>, "Per-card and per-IP-bad-secret request ceilings per minute (240 / 30)"],
-                [<code key="e">ATTESTPAY_OAUTH_ACCESS_TTL · ATTESTPAY_OAUTH_REFRESH_TTL</code>, "OAuth access / refresh token lifetimes in seconds (3600 / 2592000)"],
-                [<code key="e">ATTESTPAY_OAUTH_REDIRECT_HOSTS</code>, "If set, restricts OAuth https redirect-URI hosts to this allowlist (recommended in prod)"],
-              ]}
-            />
-            <h3>Contracts (Base mainnet · chain 8453)</h3>
-            <Table
-              head={["Contract", "Address"]}
-              rows={[
-                [<code key="c">DelegationManager</code>, <code key="v">0xdb9B1e94B5b69Df7e401DDbedE43491141047dB3</code>],
-                [<code key="c">Stateless7702 delegator impl</code>, <code key="v">0x63c0c19a282a1B52b07dD5a65b58948A07DAE32B</code>],
-                [<code key="c">USDC</code>, <code key="v">0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913</code>],
-              ]}
-            />
-          </Section>
-
-          {/* ---- Cook Off ---- */}
-          <Section id="cookoff" title="The Cook Off">
-            <p className="docp">
-              KeeperCard was built for the MetaMask Smart Accounts Kit × 1Shot API × Venice AI Dev Cook Off. The hard gate,
-              Smart Accounts Kit in the main flow, is the product itself: every card is a SAK delegation, signed by a
-              Privy-provisioned embedded smart account, and every spend redeems it on-chain.
-            </p>
-            <Table
-              head={["Track", "What KeeperCard does"]}
-              rows={[
-                ["x402 + ERC-7710", "paid_fetch pays HTTP 402 through the card's 7710 delegation; real x402 v2 on Base mainnet"],
-                ["Best Agent experience", "One URL is the whole integration; typed refusals; an OAuth lane for consent UX"],
-                ["Agent-to-agent", "issue_subcard redelegates narrower authority; revoke + nuke kill whole subtrees in one signature"],
-                ["Venice AI", "The issue modal compiles plain language into signed card terms (model names, registry resolves)"],
-                ["1Shot Relayer", "Every redemption rides the 1Shot Public Relayer, gasless, fees in USDC"],
-              ]}
-            />
-            <Note>
-              KeeperCard uses programmatic <b>ERC-7710 Delegations</b>, not ERC-7715 Advanced Permissions: the 7710 caveat
-              set is richer than the 7715 grant catalog allows, so there is no{" "}
-              <code>wallet_requestExecutionPermissions</code> path.
-            </Note>
-            <h3>Where in the code</h3>
-            <p className="docp">
-              Direct links into the public repo for each track, following the MetaMask DevRel submission guideline.
-            </p>
-            <ul className="docul">
-              <li className="docli">
-                <b>Delegations.</b> Create:{" "}
-                <a href="https://github.com/s0nderlabs/remit/blob/main/packages/engine/src/issuance.ts#L53" target="_blank" rel="noreferrer">
-                  <code>issueRootCard</code>
-                </a>{" "}
-                (caveats via{" "}
-                <a href="https://github.com/s0nderlabs/remit/blob/main/packages/engine/src/compiler.ts#L270" target="_blank" rel="noreferrer">
-                  <code>compileCard</code>
-                </a>
-                ). Redeem:{" "}
-                <a href="https://github.com/s0nderlabs/remit/blob/main/packages/engine/src/spend.ts#L582" target="_blank" rel="noreferrer">
-                  <code>spend.ts</code>
-                </a>
-                .
-              </li>
-              <li className="docli">
-                <b>Redelegation (A2A).</b>{" "}
-                <a href="https://github.com/s0nderlabs/remit/blob/main/packages/engine/src/issuance.ts#L225" target="_blank" rel="noreferrer">
-                  <code>issueSubCard</code>
-                </a>{" "}
-                attenuates the parent and builds a child delegation bound to the parent&apos;s hash.
-              </li>
-              <li className="docli">
-                <b>x402.</b> Server:{" "}
-                <a href="https://github.com/s0nderlabs/remit/blob/main/packages/server/src/facilitator/routes.ts#L51" target="_blank" rel="noreferrer">
-                  <code>facilitatorRoutes</code>
-                </a>
-                . Client (erc7710 asset transfer):{" "}
-                <a href="https://github.com/s0nderlabs/remit/blob/main/packages/engine/src/x402.ts#L64" target="_blank" rel="noreferrer">
-                  <code>buildX402Payload</code>
-                </a>
-                .
-              </li>
-              <li className="docli">
-                <b>1Shot.</b> Every redemption rides the relayer:{" "}
-                <a href="https://github.com/s0nderlabs/remit/blob/main/packages/engine/src/relayer.ts#L135" target="_blank" rel="noreferrer">
-                  <code>Relayer.send</code>
-                </a>{" "}
-                (<code>relayer_send7710Transaction</code>).
-              </li>
-              <li className="docli">
-                <b>Venice.</b>{" "}
-                <a href="https://github.com/s0nderlabs/remit/blob/main/packages/server/src/venice/client.ts#L20" target="_blank" rel="noreferrer">
-                  <code>veniceChat</code>
-                </a>{" "}
-                orchestrated by{" "}
-                <a href="https://github.com/s0nderlabs/remit/blob/main/packages/server/src/venice/compiler.ts#L98" target="_blank" rel="noreferrer">
-                  <code>compileIntent</code>
-                </a>
-                .
-              </li>
-            </ul>
+          {/* ---- Verify ---- */}
+          <Section id="verify" title="Verify It Yourself">
+            <Code code={`cargo test -p reins          # contract unit tests
+bun test packages            # SDK and MCP tests
+bun run verify               # keyless: re-reads every recorded tx from the chain`} />
             <hr className="docrule" />
             <p className="docp">
-              Ready to issue one? <Link href="/app">Open the dashboard</Link>, sign in, and your first card takes about a
-              minute.
+              Ready? <Link href="/app">Open the console</Link> — the demo owner&apos;s reins are readable without signing in.
             </p>
           </Section>
         </div>
