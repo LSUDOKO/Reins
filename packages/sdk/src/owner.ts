@@ -63,14 +63,14 @@ export class OwnerClient {
   /**
    * Create a named sub-account (e.g. `research.you.testnet`) whose ONLY key is the agent's
    * function-call key for this contract. The agent gets its own on-chain identity and the
-   * owner's account carries no agent keys at all. 0.01 NEAR covers the account's storage.
+   * owner's account carries no agent keys at all. 0.1 NEAR covers storage and gas prepayment.
    */
   createAgentAccount(accountId: string, publicKey: string, allowanceNear = "0.25") {
     return this.account.signAndSendTransaction({
       receiverId: accountId,
       actions: [
         actions.createAccount(),
-        actions.transfer(BigInt(toYocto("0.01"))),
+        actions.transfer(BigInt(toYocto("0.1"))),
         actions.addFunctionCallAccessKey(PublicKey.fromString(publicKey), this.contractId, [...AGENT_METHODS], BigInt(toYocto(allowanceNear))),
       ],
     });
