@@ -367,3 +367,29 @@ button:focus-visible, a:focus-visible { outline: 3px solid var(--lime); outline-
 .gate .gatebadge { position: absolute; right: 18px; bottom: 18px; color: var(--lime); width: 112px; height: 112px; }
 .demobar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 10px 0 0; padding: 8px 14px; border-radius: 999px; background: var(--sage-soft); color: var(--forest-deep); font-size: 13px; }
 .demobar button { padding: 4px 14px; font-size: 12.5px; }
+
+/* ---------- the rein card: a forest business card with lime print ---------- */
+.card, [data-theme="dark"] .card {
+  --ink: var(--lime); --body: #e5ead2; --label: var(--sage); --ghost: #7fa07a;
+  --hairline: rgba(185, 217, 138, 0.25); --hairline-soft: rgba(185, 217, 138, 0.15); --edge: var(--lime);
+  --canvas: var(--forest-deep); --inset: #1d4a2e;
+  background:
+    radial-gradient(120% 90% at 0% 0%, rgba(232, 234, 79, 0.1), transparent 55%),
+    linear-gradient(160deg, #22603b 0%, var(--forest-deep) 70%);
+  border: 0; border-radius: 16px;
+  box-shadow: 0 22px 40px -22px rgba(5, 25, 12, 0.85), inset 0 0 0 1px rgba(232, 234, 79, 0.14);
+  color: var(--lime);
+}
+.card::before, [data-theme="dark"] .card::before { background: linear-gradient(115deg, transparent 30%, rgba(232, 234, 79, 0.16) 45%, transparent 60%); }
+.card .wm { font-family: var(--font-display), sans-serif; font-weight: 800; font-size: 22px; letter-spacing: 0.02em; text-transform: uppercase; color: var(--lime); }
+.card .band svg { filter: grayscale(1) brightness(1.7) sepia(1) hue-rotate(30deg) saturate(3); opacity: 0.35; }
+.chipdots i { background: rgba(232, 234, 79, 0.18); }
+.chipdots i.a { background: var(--lime); border: 0; }
+.ctag { background: var(--lime); color: var(--forest-deep); font-family: var(--font-sans), sans-serif; font-weight: 700; }
+.minicard, .thumb { background: var(--forest-deep); border-color: transparent; color: var(--lime); }
+.mc-mark { color: var(--lime); text-transform: uppercase; }
+.fig .int, .fig .cur, .fig .dec { font-family: var(--font-display), sans-serif; }
+
+/* surfaces that used the page colour now sit on the sheet */
+.note, .lpcode { background: var(--paper); }
+.docs { background: var(--page); }
