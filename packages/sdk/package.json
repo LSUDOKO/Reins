@@ -1,0 +1,14 @@
+{
+  "name": "@reins/sdk",
+  "version": "0.1.0",
+  "description": "TypeScript client for the Reins contract: owner setup, agent payments and the counterparty guard",
+  "type": "module",
+  "main": "src/index.ts",
+  "license": "MIT",
+  "scripts": {
+    "test": "bun test"
+  },
+  "dependencies": {
+    "near-api-js": "^7.5.3"
+  }
+}
