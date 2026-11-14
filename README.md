@@ -297,7 +297,7 @@ The Groq key is a Cloudflare Worker secret; it never touches the repository or t
 ## Proof
 
 Everything below is reproducible; `bun run verify` re-checks the live contract and each recorded transaction
-without keys ([20/20 PASS](tests/results/verify.txt)).
+without keys: 18/18 checks, or 20/20 with `--tests`, which also runs both test suites ([output](tests/results/verify.txt)).
 
 <details open>
 <summary><b>Attack demo: a prompt-injected agent tries to drain its owner</b> (<a href="demo/logs/attack.log">full log</a>)</summary>
@@ -384,7 +384,7 @@ Environment variables: [DEPLOYMENT.md](DEPLOYMENT.md#environment-variables).
 | JS: SDK, MCP, API, console logic | **45 pass** |
 | clippy `-D warnings` (wasm) | 0 warnings |
 | Browser e2e on the live console | **8/8 PASS** |
-| On-chain `verify` | **20/20** |
+| On-chain `verify --tests` | **20/20** |
 
 Methodology, coverage areas and gaps: [TESTING.md](TESTING.md). Raw output: [`tests/results/`](tests/results).
 No line-coverage figure is claimed because none was measured.

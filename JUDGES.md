@@ -8,7 +8,7 @@ command and, where possible, a testnet transaction. Nothing here needs keys.
 ```bash
 cargo test -p reins                                   # 75 passed: rules, authorization, rollback, audit regressions
 bun install --linker hoisted && bun test packages/sdk packages/mcp packages/api packages/dashboard/lib   # 45 pass
-bun run verify                                        # re-checks the live contract and every recorded tx: 20/20 PASS
+bun run verify                                        # re-checks the live contract and every recorded tx: 18/18 PASS (20/20 with --tests)
 ```
 
 Then open the console: <https://reins.adoranto737.workers.dev> → **Create a testnet demo account** (one click,
