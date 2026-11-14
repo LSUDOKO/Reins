@@ -6,6 +6,7 @@
 import type { Terms } from "@reins/sdk";
 import { draftFromText } from "./draft";
 import { nearToYocto } from "./near";
+import { currencyOf, fromUnits, type TermsV2 } from "./currency";
 
 export const API = (process.env.NEXT_PUBLIC_REINS_API ?? "https://reins-api.adoranto737.workers.dev").replace(/\/$/, "");
 
@@ -41,11 +42,14 @@ function windowWord(secs: number): string {
 /** The template explanation, used when the API is unreachable. */
 export function explainLocally(t: Terms, label?: string): string {
   const who = label ? `The "${label}" agent` : "This agent";
+  const c = currencyOf(t as TermsV2);
+  const amt = (v: string) => `${fromUnits(v, c)} ${c === "ETH" ? "ETH" : c}`;
+  const from = c === "ETH" ? "on Base Sepolia, signed through NEAR Chain Signatures," : "from your vault";
   const parts = [
-    `${who} can spend up to ${near(t.budget)} NEAR ${windowWord(Number(t.period_secs))} from your vault`,
-    `never more than ${near(t.per_tx_cap)} NEAR in one payment`,
+    `${who} can spend up to ${amt(t.budget)} ${windowWord(Number(t.period_secs))} ${from}`,
+    `never more than ${amt(t.per_tx_cap)} in one payment`,
   ];
-  if (t.approval_above) parts.push(`and must ask you before paying more than ${near(t.approval_above)} NEAR`);
+  if (t.approval_above) parts.push(`and must ask you before paying more than ${amt(t.approval_above)}`);
   let s = parts.join(", ") + ".";
   if (t.merchants?.length) s += ` It can only pay ${t.merchants.join(", ")}.`;
   if (t.max_uses) s += ` It can make at most ${t.max_uses} payments.`;
