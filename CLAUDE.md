@@ -7,12 +7,13 @@ Reins: per-agent spending limits on NEAR. Rust contract + TypeScript SDK + MCP s
 | Purpose | Command | Expected |
 | --- | --- | --- |
 | Install JS deps | `bun install --linker hoisted` | no errors |
-| Contract tests (offline) | `cargo test -p reins` | `63 passed` |
-| JS tests (offline) | `bun test packages/sdk packages/mcp packages/api` | `37 pass` |
+| Contract tests (offline) | `cargo test -p reins` | `75 passed` |
+| JS tests (offline) | `bun test packages/sdk packages/mcp packages/api packages/dashboard/lib` | `45 pass` |
 | Typecheck | `bun run typecheck` | no output |
 | Verify deployment, no keys | `bun run verify` | every row `PASS` (needs network) |
 | Build web console | `bun run --cwd packages/dashboard build` | static site in `packages/dashboard/out` |
 | Build wasm | `cd contracts/reins && cargo near build non-reproducible-wasm` | `target/near/reins/reins.wasm` |
+| Browser e2e (live console) | `node tests/e2e/console.e2e.mjs` (needs playwright) | 8/8 PASS |
 | Chain Signatures demo | `bun run crosschain` | MPC-signed Base Sepolia tx, signer == rein address |
 | Own testnet deploy | `PREFIX=<name> ./scripts/deploy.sh` then `PREFIX=<name> bun run demo` / `bun run attack` | logs in `demo/logs/` |
 

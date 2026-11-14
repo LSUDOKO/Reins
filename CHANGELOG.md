@@ -13,6 +13,22 @@ All notable changes to this project are documented here. The format follows
 ### Changed
 - Contracts formatted with `rustfmt`.
 
+### Security
+Fixes from the internal audit (see [SECURITY.md](SECURITY.md)), deployed to `reins-near.testnet` as a code
+upgrade; all demos re-run on the fixed contract.
+- C-1: EVM reins can no longer file or receive NEAR approval requests (could pay out pooled NEAR).
+- C-2: rein currency is immutable; settlement callbacks roll back using the booked currency and window.
+- H-1: token deposits require `register_token`; unregistered and zero deposits are refunded without state.
+- M-1: refunds never top up a newer budget window.
+- M-2: `pay_evm` requires the exact next nonce; precise rollback; owner `reset_evm_nonce`.
+- L-1/L-3/L-4/L-5: approval thresholds bind the whole chain; freeze applies to the subtree; revoked keys cannot
+  be re-bound; at most 128 reins ever per owner.
+
+### Added (testing)
+- 12 audit regression tests (75 contract tests total), browser end-to-end test `tests/e2e/console.e2e.mjs`,
+  committed results in `tests/results/`, CI: rustfmt, clippy on wasm, wasm build, console build, gitleaks,
+  cargo audit.
+
 ## [0.2.0] - 2026-11-14
 
 Contract redeployed to a fresh account, `reins-near.testnet` (the state layout changed).
