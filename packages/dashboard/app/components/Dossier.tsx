@@ -11,6 +11,7 @@
 // the verbs, tabs and carousel chrome never move.
 // Every verb is a transaction the owner's NEAR wallet signs.
 
+import { ExplainRein } from "./Plain";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, type Variants } from "motion/react";
 import type { CardState, TreeNode } from "@/lib/api";
@@ -147,6 +148,9 @@ export function Dossier({
               refresh={refresh}
               onConnect={connect}
             />
+            <div style={{ maxWidth: 640, margin: "6px auto 0", textAlign: "left" }}>
+              <ExplainRein terms={card.raw.terms} label={card.name} />
+            </div>
           </>
         ) : (
           <div className="heroempty">
