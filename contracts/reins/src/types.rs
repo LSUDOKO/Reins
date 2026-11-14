@@ -118,3 +118,15 @@ pub struct Preview {
     pub remaining: U128,
     pub vault: U128,
 }
+
+/// What a payment booked, carried to its settlement callback so a rollback restores exactly
+/// what was taken: the rein chain, the budget window each rein was in, and the currency.
+/// Using the rein's current terms instead would let a currency change mid-flight mint funds.
+#[near(serializers = [borsh, json])]
+#[derive(Clone, Debug)]
+pub struct Booking {
+    pub chain: Vec<ReinId>,
+    pub windows: Vec<U64>,
+    pub token: Option<AccountId>,
+    pub evm: bool,
+}

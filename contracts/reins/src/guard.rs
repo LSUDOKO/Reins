@@ -36,6 +36,7 @@ impl Reins {
             return Err(SELF_PAYMENT);
         }
         let mut min_remaining = u128::MAX;
+        let mut needs_approval = false;
         for rid in self.chain(id) {
             let r = self.rein(rid);
             if r.status != Status::Active {
@@ -63,6 +64,14 @@ impl Reins {
             if amount > rem {
                 return Err(OVER_BUDGET);
             }
+            // Every rein on the chain can require approval, not just the leaf.
+            if !approved {
+                if let Some(t) = r.terms.approval_above {
+                    if amount > t.0 {
+                        needs_approval = true;
+                    }
+                }
+            }
             min_remaining = min_remaining.min(rem);
         }
         if self.blocked_for(&owner, receiver) {
@@ -72,20 +81,16 @@ impl Reins {
         if leaf.terms.evm_chain_id.is_none() && self.vault_in(&owner, &leaf.terms.token) < amount {
             return Err(VAULT_EMPTY);
         }
-        if !approved {
-            if let Some(t) = leaf.terms.approval_above {
-                if amount > t.0 {
-                    return Err(NEEDS_APPROVAL);
-                }
-            }
+        if needs_approval {
+            return Err(NEEDS_APPROVAL);
         }
         Ok(min_remaining)
     }
 
     /// Book a checked payment on every rein in the chain and take it out of the vault.
-    pub(crate) fn book(&mut self, id: ReinId, amount: u128, at: u64) -> Vec<ReinId> {
+    pub(crate) fn book(&mut self, id: ReinId, amount: u128, at: u64) -> Booking {
         let chain = self.chain(id);
-        let mut owner = None;
+        let mut windows = Vec::with_capacity(chain.len());
         for rid in &chain {
             let r = self.reins.get_mut(rid).unwrap();
             if window_elapsed(r, at) {
@@ -95,30 +100,39 @@ impl Reins {
             r.spent = u128s(r.spent.0 + amount);
             r.total_spent = u128s(r.total_spent.0 + amount);
             r.uses += 1;
-            owner = Some(r.owner.clone());
+            windows.push(r.window_start);
         }
-        let owner = owner.unwrap();
-        let terms = self.rein(id).terms.clone();
-        if terms.evm_chain_id.is_none() {
-            let v = self.vault_in(&owner, &terms.token);
-            self.set_vault_in(&owner, &terms.token, v - amount);
+        let leaf = self.rein(id);
+        let owner = leaf.owner.clone();
+        let booking = Booking {
+            chain,
+            windows,
+            token: leaf.terms.token.clone(),
+            evm: leaf.terms.evm_chain_id.is_some(),
+        };
+        if !booking.evm {
+            let v = self.vault_in(&owner, &booking.token);
+            self.set_vault_in(&owner, &booking.token, v - amount);
         }
-        chain
+        booking
     }
 
-    /// Undo `book` after the transfer failed.
-    pub(crate) fn unbook(&mut self, chain: &[ReinId], owner: &AccountId, amount: u128) {
-        for rid in chain {
+    /// Undo `book` after the transfer failed. Budget is given back only to a rein still in
+    /// the window the payment was booked in (a refund must not top up a newer window); uses,
+    /// lifetime totals and the vault in the booked currency are always restored.
+    pub(crate) fn unbook(&mut self, b: &Booking, owner: &AccountId, amount: u128) {
+        for (rid, ws) in b.chain.iter().zip(b.windows.iter()) {
             if let Some(r) = self.reins.get_mut(rid) {
-                r.spent = u128s(r.spent.0.saturating_sub(amount));
+                if r.window_start.0 == ws.0 {
+                    r.spent = u128s(r.spent.0.saturating_sub(amount));
+                }
                 r.total_spent = u128s(r.total_spent.0.saturating_sub(amount));
                 r.uses = r.uses.saturating_sub(1);
             }
         }
-        let terms = self.rein(chain[0]).terms.clone();
-        if terms.evm_chain_id.is_none() {
-            let v = self.vault_in(owner, &terms.token);
-            self.set_vault_in(owner, &terms.token, v + amount);
+        if !b.evm {
+            let v = self.vault_in(owner, &b.token);
+            self.set_vault_in(owner, &b.token, v + amount);
         }
     }
 }
