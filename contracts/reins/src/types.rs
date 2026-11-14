@@ -31,6 +31,13 @@ pub struct Terms {
     pub max_uses: Option<u32>,
     /// If set, the agent may only pay these accounts.
     pub merchants: Option<Vec<AccountId>>,
+    /// NEP-141 token the budget is denominated in; `None` means native NEAR.
+    #[serde(default)]
+    pub token: Option<AccountId>,
+    /// EVM chain id when this rein pays on another chain through Chain Signatures
+    /// (amounts in wei; merchants are `0x…` addresses). `None` means payments on NEAR.
+    #[serde(default)]
+    pub evm_chain_id: Option<U64>,
 }
 
 /// One rein: a set of terms bound to one public key on the owner's account.
@@ -39,6 +46,9 @@ pub struct Terms {
 pub struct Rein {
     pub id: ReinId,
     pub owner: AccountId,
+    /// Account that holds the agent key: the owner, or a named sub-account of the owner
+    /// (e.g. `research.alice.testnet`) that holds only that function-call key.
+    pub agent_account: AccountId,
     pub agent_key: PublicKey,
     pub label: String,
     pub parent: Option<ReinId>,
@@ -54,6 +64,8 @@ pub struct Rein {
     pub created_at: U64,
     /// Open approval requests; capped so an agent cannot grow state without bound.
     pub pending_requests: u8,
+    /// Next EVM nonce this rein may sign (Chain Signatures reins only).
+    pub evm_nonce: U64,
 }
 
 #[near(serializers = [borsh, json])]
