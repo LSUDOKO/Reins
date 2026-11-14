@@ -9,7 +9,6 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { setupWalletSelector, type WalletSelector } from "@near-wallet-selector/core";
 import { setupModal, type WalletSelectorModal } from "@near-wallet-selector/modal-ui";
 import { setupMyNearWallet } from "@near-wallet-selector/my-near-wallet";
-import { setupMeteorWallet } from "@near-wallet-selector/meteor-wallet";
 import { actionCreators } from "@near-js/transactions";
 import { PublicKey } from "@near-js/crypto";
 import { panicOf } from "@reins/sdk";
@@ -51,7 +50,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let sub: { unsubscribe: () => void } | undefined;
-    setupWalletSelector({ network: NETWORK, modules: [setupMyNearWallet(), setupMeteorWallet()] })
+    setupWalletSelector({ network: NETWORK, modules: [setupMyNearWallet()] })
       .then((s) => {
         setSelector(s);
         modal.current = setupModal(s, { contractId: CONTRACT_ID, description: "Sign in as the owner of your reins." });
