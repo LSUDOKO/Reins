@@ -1,0 +1,19 @@
+{
+  "name": "@reins/mcp",
+  "version": "0.1.0",
+  "description": "MCP server that lets any agent pay through a Reins function-call key",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "reins-mcp": "src/index.ts"
+  },
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "@reins/sdk": "workspace:*",
+    "zod": "^4.6.7"
+  }
+}
