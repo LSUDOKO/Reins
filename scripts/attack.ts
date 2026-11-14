@@ -46,7 +46,7 @@ log("agent (compromised) follows the hidden instruction.\n");
 
 // 1. Pay the drain account through the guard -----------------------------------------
 log(`1. guardedPay 0.15 NEAR -> ${CFG.scammer}`);
-const a1 = await agent.guardedPay({ receiver: CFG.scammer, amountNear: "0.15", askHuman: async () => true });
+const a1 = await agent.guardedPay({ receiver: CFG.scammer, amountNear: "0.15", askHuman: async () => true, context: page });
 log(`   -> ${a1.status}${a1.status === "refused" ? ` by ${a1.by}: ${a1.code}` : ""}`);
 for (const r of a1.assessment.reasons) log(`      [${r.level}] ${r.signal}: ${r.detail}`);
 row(`pay ${CFG.scammer}`, "guard", a1.status === "refused" ? `refused (${a1.code}), nothing signed` : a1.status);
