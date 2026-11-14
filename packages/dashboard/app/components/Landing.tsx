@@ -181,6 +181,24 @@ const POSTERS = [
     tag: "issue_subrein",
     d: <DLeaf className="pdoodle" />,
   },
+  {
+    h: "Stablecoins too",
+    p: <>A rein can budget in a NEP-141 token instead of NEAR. Deposit it once; the contract pays merchants with <code>ft_transfer</code>.</>,
+    tag: "NEP-141 · tUSD on testnet",
+    d: <DCoin className="pdoodle" />,
+  },
+  {
+    h: "Pays on other chains",
+    p: <>The same limits gate payments on Base Sepolia: the contract asks NEAR&apos;s MPC network to sign, and only if the rein allows it.</>,
+    tag: "Chain Signatures",
+    d: <DChain className="pdoodle" />,
+  },
+  {
+    h: "Each agent, its own account",
+    p: <>Give an agent a named sub-account like <code>research.you.testnet</code>. Its key lives there, never on your account.</>,
+    tag: "named sub-accounts",
+    d: <DKey className="pdoodle" />,
+  },
 ];
 
 const RULES = [
