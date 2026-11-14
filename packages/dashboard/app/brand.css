@@ -397,3 +397,12 @@ button:focus-visible, a:focus-visible { outline: 3px solid var(--lime); outline-
 .reinfacts { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 10px; }
 .reinfacts .pill { background: var(--sage-soft); color: var(--forest-deep); }
 .reinfacts a { color: inherit; }
+
+/* structural buttons (row disclosure, carousel dots) are not glass */
+button.khrunhead, button.cdot {
+  box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; background: transparent;
+  border-color: transparent; border-radius: 12px; overflow: visible; transform: none; letter-spacing: normal; font-weight: inherit;
+}
+button.khrunhead::before, button.cdot::before { display: none; }
+button.khrunhead:hover { background: var(--hover); transform: none; box-shadow: none; }
+button.cdot { padding: 0; }
