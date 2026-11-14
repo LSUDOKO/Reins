@@ -9,6 +9,10 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { setupWalletSelector, type WalletSelector } from "@near-wallet-selector/core";
 import { setupModal, type WalletSelectorModal } from "@near-wallet-selector/modal-ui";
 import { setupMyNearWallet } from "@near-wallet-selector/my-near-wallet";
+import { setupHotWallet } from "@near-wallet-selector/hot-wallet";
+import { setupIntearWallet } from "@near-wallet-selector/intear-wallet";
+import { setupSender } from "@near-wallet-selector/sender";
+import { setupHereWallet } from "@near-wallet-selector/here-wallet";
 import { actionCreators } from "@near-js/transactions";
 import { PublicKey } from "@near-js/crypto";
 import { panicOf } from "@reins/sdk";
@@ -32,6 +36,12 @@ export type Wallet = {
   call: (method: string, args: Record<string, unknown>, depositNear?: string) => Promise<string | null>;
   /** Add `publicKey` to the owner's own account as a function-call key for the agent methods. */
   addAgentKey: (publicKey: string, allowanceNear?: string) => Promise<string | null>;
+  /**
+   * Create a rein and add its agent key in ONE wallet approval: two transactions,
+   * `create_rein` on the contract and AddKey on the owner's own account. Redirect
+   * wallets leave the page here; callers persist what they need first.
+   */
+  createReinWithKey: (publicKey: string, label: string, terms: Record<string, unknown>, storageNear: string, allowanceNear?: string) => Promise<void>;
   /** Delete a key from the owner's account (revoked agents stop burning gas allowance). */
   deleteKey: (publicKey: string) => Promise<string | null>;
 };
@@ -50,7 +60,10 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let sub: { unsubscribe: () => void } | undefined;
-    setupWalletSelector({ network: NETWORK, modules: [setupMyNearWallet()] })
+    setupWalletSelector({
+      network: NETWORK,
+      modules: [setupMyNearWallet(), setupHotWallet(), setupIntearWallet(), setupHereWallet(), setupSender()],
+    })
       .then((s) => {
         setSelector(s);
         modal.current = setupModal(s, { contractId: CONTRACT_ID, description: "Sign in as the owner of your reins." });
@@ -92,9 +105,31 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         send(accountId ?? "", [
           actionCreators.addKey(
             PublicKey.fromString(publicKey),
-            actionCreators.functionCallAccessKey(CONTRACT_ID, AGENT_METHODS, nearToYocto(allowanceNear)),
+            actionCreators.functionCallAccessKey(CONTRACT_ID, [...AGENT_METHODS], nearToYocto(allowanceNear)),
           ),
         ]),
+      createReinWithKey: async (publicKey, label, terms, storageNear, allowanceNear = AGENT_ALLOWANCE_NEAR) => {
+        if (!selector || !accountId) throw new Error("Sign in with your NEAR wallet first");
+        const wallet = await selector.wallet();
+        const out = await wallet.signAndSendTransactions({
+          transactions: [
+            { receiverId: CONTRACT_ID, actions: [actionCreators.functionCall("create_rein", { agent_key: publicKey, label, terms }, GAS, nearToYocto(storageNear))] },
+            {
+              receiverId: accountId,
+              actions: [
+                actionCreators.addKey(
+                  PublicKey.fromString(publicKey),
+                  actionCreators.functionCallAccessKey(CONTRACT_ID, [...AGENT_METHODS], nearToYocto(allowanceNear)),
+                ),
+              ],
+            },
+          ],
+        });
+        for (const o of out ?? []) {
+          const panic = panicOf(o);
+          if (panic) throw new Error(panic);
+        }
+      },
       deleteKey: (publicKey) => send(accountId ?? "", [actionCreators.deleteKey(PublicKey.fromString(publicKey))]),
     }),
     [selector, accountId, send],
