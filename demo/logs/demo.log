@@ -1,47 +1,47 @@
-# demo run at 2026-11-14T14:17:49.833Z on reins-near.testnet
+# demo run at 2026-11-14T17:57:54.062Z on reins-near.testnet
 contract reins-near.testnet v0.2.0, owner reins-near-owner.testnet
 
-1. vault holds 1.3492 NEAR
+1. vault holds 1.2076 NEAR
 
-2. rein #7: 0.5 NEAR/day, 0.2 per payment, owner approval above 0.1
-   agent key ed25519:2Lf3EK8CK2q8CF4fHE9T7xcPn1qdpqY2LtYw6pWsWqnw added to reins-near-owner.testnet as a function-call key
+2. rein #23: 0.5 NEAR/day, 0.2 per payment, owner approval above 0.1
+   agent key ed25519:4MPaxGxMHkwo6zwW3pVxwbBw8zZuWnT7LP3osWJGL5LU added to reins-near-owner.testnet as a function-call key
    allowed methods: pay, pay_evm, request_approval, issue_subrein on reins-near.testnet; gas allowance 0.25 NEAR
 
 3. agent pays 0.05 NEAR to reins-near-shop.testnet through guardedPay
   human asked (verdict warn):
-    [warn] age: account is 0.0 days old
-    [info] history: 4 prior payment(s) from this owner
+    [warn] age: account is 0.2 days old
+    [info] history: 10 prior payment(s) from this owner
   human: approve
-   -> paid https://testnet.nearblocks.io/txns/gG9p4VZv7kYAfkQ5f5YY31MsfmUDBwEhrm6vVBzMHyt
+   -> paid https://testnet.nearblocks.io/txns/DVuz9gUx69shV3hacNBXZLCLFFYsrxmiYbLKwptaXcst
 
 4. agent wants to pay 0.15 NEAR (above the 0.1 threshold)
-   -> pending_approval https://testnet.nearblocks.io/txns/9CfuiBHmmV51H6mt3rqLB9UK4eiPh6XQG8qC8SvHbtSR
-   pending for owner: [{"id":2,"amount":"0.15"}]
-   owner approves request #2 with a full-access key -> paid https://testnet.nearblocks.io/txns/3yDJkT3Mift8QHMjj46ASnR7n74om2RpfM7tUHZ5Fx6v
+   -> pending_approval https://testnet.nearblocks.io/txns/7CDLfU1Pbw9GU6cKZmRma45SES5wD3rxwJa2or1CrS4w
+   pending for owner: [{"id":3,"amount":"0.15"}]
+   owner approves request #3 with a full-access key -> paid https://testnet.nearblocks.io/txns/7V9YPRq2vwiwyHtxZP55BYEtUatdWrW8uT1TEWpdrY2w
 
 5. agent tries 0.3 NEAR (cap is 0.2)
    -> refused by contract: over_per_tx_cap
 
 6. agent issues a sub-rein (0.1 NEAR/day) for a sub-agent
-   sub-rein #8 registered https://testnet.nearblocks.io/txns/BW8wrkbJqVuZcE6bKMu9bykREMHhNEX6EskwoxXderqf
+   sub-rein #24 registered https://testnet.nearblocks.io/txns/7kZFS2wRgTydndL55pbapiqjry1yaejL76zGig2aL7SQ
    sub-agent pays before the owner added its key -> rejected by the network (key not on the account)
-   owner adds the key; sub-agent pays 0.02 -> paid https://testnet.nearblocks.io/txns/HueFU2cGdRZ3Lz5uRiYPEG1yoPon64m9tY83ayNuGEXa
+   owner adds the key; sub-agent pays 0.02 -> paid https://testnet.nearblocks.io/txns/vqNbMCGbtD4sWHW53k9AKr6Uftbj99U3Re9dqmQfUSh
    parent rein spent today: 0.22 NEAR (sub-agent spending counts against it)
 
-7. owner freezes rein #7; agent pays 0.01 -> refused: rein_not_active
+7. owner freezes rein #23; agent pays 0.01 -> refused: rein_not_active
    owner unfreezes it
 
-8. rein #9 held by its own account amwghqoy2.reins-near-owner.testnet (created with only the agent's function-call key)
-   amwghqoy2.reins-near-owner.testnet pays 0.01 NEAR from reins-near-owner.testnet's vault -> paid https://testnet.nearblocks.io/txns/CKT6k4FVtghMugCbCYS3WKHA9H9MmRhH4VPjwPHbfwwN
+8. rein #25 held by its own account amwgplrwh.reins-near-owner.testnet (created with only the agent's function-call key)
+   amwgplrwh.reins-near-owner.testnet pays 0.01 NEAR from reins-near-owner.testnet's vault -> paid https://testnet.nearblocks.io/txns/EfaAS2oNty1jqNZhbDt5VmDazAsTSTVfvAF5uFoj6BW2
 
-9. rein #10: 25 tUSD/day, 10 per payment. Agent pays 4 tUSD -> paid https://testnet.nearblocks.io/txns/FAGTDeELN65QGUt8g3SK5Ms1U55FMMYAEN4QDYVkTjuD
+9. rein #26: 25 tUSD/day, 10 per payment. Agent pays 4 tUSD -> paid https://testnet.nearblocks.io/txns/HJuKJAsM3ke3H8HfE9sFjbLHx1fqb5XioHpyu29ma1iG
    agent tries 12 tUSD -> over_per_tx_cap
-   owner's tUSD vault 396 -> 392
+   owner's tUSD vault 592 -> 588
 
-final: rein #7 spent 0.22 / 0.5 NEAR today, 3 payments; stats {
-  "reins": 10,
-  "requests": 2,
-  "payments": 9,
-  "volume": "450000000000000004000000",
+final: rein #23 spent 0.22 / 0.5 NEAR today, 3 payments; stats {
+  "reins": 26,
+  "requests": 3,
+  "payments": 16,
+  "volume": "700000000000000004000000",
   "evm_signatures": 1
 }

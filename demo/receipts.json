@@ -1,91 +1,91 @@
 [
   {
-    "label": "chain signatures: signed Base Sepolia payment",
-    "txHash": "3y8qKiaonBMUUfgEykdZ9Af57W5qPxXFAbXtFpoyvd1G",
-    "signer": "reins-near-owner.testnet",
-    "expect": "evm_payment_signed"
-  },
-  {
-    "label": "chain signatures: merchant outside the list",
-    "txHash": "8CY5HjXBCSorFWmiufJdP1dLTouaozV1nPv1rPutuJMX",
-    "signer": "reins-near-owner.testnet",
-    "expect": "panic",
-    "code": "merchant_not_allowed"
-  },
-  {
-    "label": "chain signatures: over cap",
-    "txHash": "A9JaTqbYrowsufZ9gqHZGDrvFgFMnVWqMamDuMw3ri6x",
-    "signer": "reins-near-owner.testnet",
-    "expect": "panic",
-    "code": "over_per_tx_cap"
-  },
-  {
     "label": "demo: guarded payment",
-    "txHash": "gG9p4VZv7kYAfkQ5f5YY31MsfmUDBwEhrm6vVBzMHyt",
+    "txHash": "DVuz9gUx69shV3hacNBXZLCLFFYsrxmiYbLKwptaXcst",
     "signer": "reins-near-owner.testnet",
     "expect": "payment"
   },
   {
     "label": "demo: approval request",
-    "txHash": "9CfuiBHmmV51H6mt3rqLB9UK4eiPh6XQG8qC8SvHbtSR",
+    "txHash": "7CDLfU1Pbw9GU6cKZmRma45SES5wD3rxwJa2or1CrS4w",
     "signer": "reins-near-owner.testnet",
     "expect": "approval_requested"
   },
   {
     "label": "demo: owner-approved payment",
-    "txHash": "3yDJkT3Mift8QHMjj46ASnR7n74om2RpfM7tUHZ5Fx6v",
+    "txHash": "7V9YPRq2vwiwyHtxZP55BYEtUatdWrW8uT1TEWpdrY2w",
     "signer": "reins-near-owner.testnet",
     "expect": "payment"
   },
   {
     "label": "demo: agent-issued sub-rein",
-    "txHash": "BW8wrkbJqVuZcE6bKMu9bykREMHhNEX6EskwoxXderqf",
+    "txHash": "7kZFS2wRgTydndL55pbapiqjry1yaejL76zGig2aL7SQ",
     "signer": "reins-near-owner.testnet",
     "expect": "rein_created"
   },
   {
     "label": "demo: sub-agent payment",
-    "txHash": "HueFU2cGdRZ3Lz5uRiYPEG1yoPon64m9tY83ayNuGEXa",
+    "txHash": "vqNbMCGbtD4sWHW53k9AKr6Uftbj99U3Re9dqmQfUSh",
     "signer": "reins-near-owner.testnet",
     "expect": "payment"
   },
   {
     "label": "demo: named sub-account agent payment",
-    "txHash": "CKT6k4FVtghMugCbCYS3WKHA9H9MmRhH4VPjwPHbfwwN",
-    "signer": "amwghqoy2.reins-near-owner.testnet",
+    "txHash": "EfaAS2oNty1jqNZhbDt5VmDazAsTSTVfvAF5uFoj6BW2",
+    "signer": "amwgplrwh.reins-near-owner.testnet",
     "expect": "payment"
   },
   {
     "label": "demo: tUSD stablecoin payment",
-    "txHash": "FAGTDeELN65QGUt8g3SK5Ms1U55FMMYAEN4QDYVkTjuD",
+    "txHash": "HJuKJAsM3ke3H8HfE9sFjbLHx1fqb5XioHpyu29ma1iG",
     "signer": "reins-near-owner.testnet",
     "expect": "payment"
   },
   {
     "label": "attack: blocked receiver",
-    "txHash": "9g4kunNoJ5ShCSBTFiZs1pqM183iLwDgCNDrvBQhsqxU",
+    "txHash": "sLmuZ8CT7bspVQKwaGgixZFDfBcKutvCnHJcagyHtA4",
     "signer": "reins-near-owner.testnet",
     "expect": "panic",
     "code": "receiver_blocked"
   },
   {
     "label": "attack: rollback on failed transfer",
-    "txHash": "6WFbMj19cMAR9datfLQRbwx2LXZDZBciMAU7VJtHFUPB",
+    "txHash": "5DmnS2jMokP9tvQN97LG3JGLgB1t4A5eejNL7sPF2zu6",
     "signer": "reins-near-owner.testnet",
     "expect": "payment_failed"
   },
   {
     "label": "attack: over cap",
-    "txHash": "2eXWbKSYiTcCQkPdeR4UseRwrputvfLDM6En6T5hqdvA",
+    "txHash": "7AvSZyTMvQn2MUjMhrSLUuAmazGh8p4DE2RBmDMrpi75",
     "signer": "reins-near-owner.testnet",
     "expect": "panic",
     "code": "over_per_tx_cap"
   },
   {
     "label": "attack: oversized sub-rein",
-    "txHash": "DnBXjVhCetXwNXtr7u5gzQ7NYJsZqrSJQdH1UkqidU5d",
+    "txHash": "6C1bshc3q9gSXbAZwFVV4pXbznVVXdRonEdyGecMU2r9",
     "signer": "reins-near-owner.testnet",
     "expect": "panic",
     "code": "child_budget_above_parent"
+  },
+  {
+    "label": "chain signatures: signed Base Sepolia payment",
+    "txHash": "5ysnzgdoSBfXTQ4DRciGdMptpQFs8TFxA9rBhnfK7Qyd",
+    "signer": "reins-near-owner.testnet",
+    "expect": "evm_payment_signed"
+  },
+  {
+    "label": "chain signatures: merchant outside the list",
+    "txHash": "GTfrw8jaJaS5FXDuDAiz4cVbeh9ySgnP4QEFu182bMHQ",
+    "signer": "reins-near-owner.testnet",
+    "expect": "panic",
+    "code": "merchant_not_allowed"
+  },
+  {
+    "label": "chain signatures: over cap",
+    "txHash": "7Fif8tvszGW4HYKH6wFvTjxNA1vZYosiETfAYJMGJfCx",
+    "signer": "reins-near-owner.testnet",
+    "expect": "panic",
+    "code": "over_per_tx_cap"
   }
 ]

@@ -1,9 +1,9 @@
-# mcp-smoke run at 2026-11-14T14:21:38Z on reins-near.testnet
-tools: rein_status, check_counterparty, preview_payment, pay, approval_status, issue_subrein, screen_text, quote_cross_chain
+# mcp-smoke run at 2026-11-14T18:00:20Z on reins-near.testnet
+tools: rein_status, check_counterparty, preview_payment, pay, approval_status, issue_subrein, pay_cross_chain, screen_text, quote_cross_chain
 
 > rein_status {}
 {
-  "rein_id": 12,
+  "rein_id": 29,
   "label": "mcp-agent",
   "status": "Active",
   "owner": "reins-near-owner.testnet",
@@ -17,7 +17,7 @@ tools: rein_status, check_counterparty, preview_payment, pay, approval_status, i
   "uses": 0,
   "max_uses": null,
   "expires_at": null,
-  "vault_near": "1.2076",
+  "vault_near": "1.0654",
   "gas_allowance_near": "0.25",
   "pending_requests": []
 }
@@ -35,7 +35,7 @@ tools: rein_status, check_counterparty, preview_payment, pay, approval_status, i
     {
       "signal": "age",
       "level": "warn",
-      "detail": "account is 0.0 days old"
+      "detail": "account is 0.2 days old"
     },
     {
       "signal": "history",
@@ -50,9 +50,9 @@ tools: rein_status, check_counterparty, preview_payment, pay, approval_status, i
   "ok": true,
   "code": null,
   "needs_approval": false,
-  "rein_id": 12,
+  "rein_id": 29,
   "remaining": "300000000000000000000000",
-  "vault": "1207650000000000000000007"
+  "vault": "1065470000000000000000011"
 }
 
 > pay {"receiver":"reins-near-drain.testnet","amount_near":"0.01","memo":"injected"}
@@ -69,7 +69,7 @@ tools: rein_status, check_counterparty, preview_payment, pay, approval_status, i
     {
       "signal": "age",
       "level": "warn",
-      "detail": "account is 0.0 days old"
+      "detail": "account is 0.2 days old"
     },
     {
       "signal": "history",
@@ -83,13 +83,13 @@ tools: rein_status, check_counterparty, preview_payment, pay, approval_status, i
 
 [elicitation shown to the human]
 Reins: your agent wants to pay reins-near-shop.testnet. The counterparty check says WARN:
-- age: account is 0.0 days old
+- age: account is 0.2 days old
 Remaining budget 0.3 NEAR. Approve this payment?
 [human clicks: approve]
 
 > pay {"receiver":"reins-near-shop.testnet","amount_near":"0.01","memo":"mcp smoke"}
 {
   "status": "paid",
-  "tx": "ACmF3h5Vo4fGjUHyJcjHifbjkz8ueEMNXY7mjRGwSvTy",
-  "explorer": "https://testnet.nearblocks.io/txns/ACmF3h5Vo4fGjUHyJcjHifbjkz8ueEMNXY7mjRGwSvTy"
+  "tx": "9tpnCvs5a78oBhuDr3SaCyVBqWwsszxsimj6ykLCdvr9",
+  "explorer": "https://testnet.nearblocks.io/txns/9tpnCvs5a78oBhuDr3SaCyVBqWwsszxsimj6ykLCdvr9"
 }
