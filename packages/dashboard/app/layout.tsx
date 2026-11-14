@@ -1,15 +1,15 @@
 import type { Metadata, Viewport } from "next";
-import { Bricolage_Grotesque, Inter, Roboto_Mono } from "next/font/google";
+import { Poppins, Roboto_Mono, Shantell_Sans } from "next/font/google";
 import "./globals.css";
+import "./brand.css";
 import { Providers } from "./providers";
 
-// The type system, three voices: Bricolage Grotesque 800 for display headlines
-// and display numerals (positive tracking, chunky, sticker-like — never below
-// 40px for prose), Inter for everything functional, Roboto Mono for micro-labels,
-// hex and technical metadata. The variable names survive from the previous
-// system so every existing rule keeps resolving.
-const display = Bricolage_Grotesque({ weight: ["700", "800"], subsets: ["latin"], variable: "--font-display", display: "swap" });
-const sans = Inter({ weight: ["400", "500", "600", "700"], subsets: ["latin"], variable: "--font-sans", display: "swap" });
+// Two voices: Shantell Sans (hand-drawn, rounded, set in capitals) for display
+// headlines and the wordmark; Poppins, a clean geometric sans, for everything
+// functional, tracked wide in nav and labels. Roboto Mono stays only for keys,
+// hashes and account ids. The CSS variable names are shared by every rule.
+const display = Shantell_Sans({ weight: ["600", "700", "800"], subsets: ["latin"], variable: "--font-display", display: "swap" });
+const sans = Poppins({ weight: ["400", "500", "600", "700"], subsets: ["latin"], variable: "--font-sans", display: "swap" });
 const mono = Roboto_Mono({ weight: ["400", "500"], subsets: ["latin"], variable: "--font-mono", display: "swap" });
 
 export const metadata: Metadata = {
@@ -39,7 +39,7 @@ export const viewport: Viewport = {
 // seeds the first visit. Runs inline so dark mode never flashes light. Also
 // pins the theme-color meta (browser chrome tint) to the ACTIVE theme · the
 // toggle keeps it in sync afterwards.
-const themeInit = `(function(){var t="light";try{t=localStorage.getItem("reins-theme");if(t!=="dark"&&t!=="light"){t=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}}catch(e){t="light";}document.documentElement.dataset.theme=t;var m=document.querySelector('meta[name="theme-color"]');if(!m){m=document.createElement("meta");m.setAttribute("name","theme-color");document.head.appendChild(m);}m.setAttribute("content",t==="dark"?"#142408":"#fcfaf5");})();`;
+const themeInit = `(function(){var t="light";try{t=localStorage.getItem("reins-theme");if(t!=="dark"&&t!=="light"){t=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}}catch(e){t="light";}document.documentElement.dataset.theme=t;var m=document.querySelector('meta[name="theme-color"]');if(!m){m=document.createElement("meta");m.setAttribute("name","theme-color");document.head.appendChild(m);}m.setAttribute("content",t==="dark"?"#10291a":"#1f5233");})();`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

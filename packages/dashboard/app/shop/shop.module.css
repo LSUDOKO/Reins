@@ -5,21 +5,26 @@
    the globals vocabulary; this module only does layout + shop surfaces. */
 
 .wrap {
-  min-height: 100vh;
-  background: var(--page);
+  min-height: calc(100dvh - 36px);
+  background: var(--paper);
   color: var(--ink);
   font-size: 13.5px;
   line-height: 1.55;
   padding: 64px 24px 90px;
+  margin: 18px auto;
+  max-width: 1100px;
+  border-radius: var(--frame-radius);
 }
+@media (max-width: 720px) { .wrap { margin: 8px; padding: 40px 16px 60px; } }
 
 .inner { max-width: 880px; margin: 0 auto; }
 
 .brand {
   font-family: var(--font-display), sans-serif;
-  font-weight: 600;
-  font-size: 26px;
-  letter-spacing: -0.01em;
+  font-weight: 800;
+  font-size: clamp(30px, 5vw, 48px);
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
 }
 .tag { color: var(--label); margin-top: 4px; font-size: 13.5px; }
 

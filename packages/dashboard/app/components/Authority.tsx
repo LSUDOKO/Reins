@@ -63,18 +63,18 @@ export function TermsGrid({ card, agentAddress }: { card: CardState; agentAddres
     <div className="termsheet">
       <div className="tcol">
         {row("Rail", "NEAR from the vault")}
-        {row("Per-Payment Cap", t.perTxMax ? `Ⓝ${t.perTxMax}` : "Uncapped")}
-        {row("Owner Approval", t.approvalAbove ? `Above Ⓝ${t.approvalAbove}` : "Never asked")}
+        {row("Per-Payment Cap", t.perTxMax ? `${card.sym}${t.perTxMax}` : "Uncapped")}
+        {row("Owner Approval", t.approvalAbove ? `Above ${card.sym}${t.approvalAbove}` : "Never asked")}
         {row("Merchants", t.merchants?.length ? `${t.merchants.length} locked` : "Any merchant", {
           title: t.merchants?.join("\n"),
         })}
-        {t.pay?.lifetime && row("Lifetime Cap", `Ⓝ${t.pay.lifetime.amount}`)}
+        {t.pay?.lifetime && row("Lifetime Cap", `${card.sym}${t.pay.lifetime.amount}`)}
         {row("Blocklist", "Shared · enforced on-chain")}
       </div>
       <div className="tcol">
         {row("Expires", expires)}
         {row("Uses Left", card.uses_remaining !== null ? card.uses_remaining : "Unlimited")}
-        {row("Payments", `${card.uses} · Ⓝ${card.total_spent} total`)}
+        {row("Payments", `${card.uses} · ${card.sym}${card.total_spent} total`)}
         {row("Agent Key", shortHex(key, 14, 4), { title: key, mono: true })}
         {row("Key Methods", "pay · request_approval · issue_subrein", { title: `function-call key for ${CONTRACT_ID}` })}
       </div>

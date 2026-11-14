@@ -47,6 +47,7 @@ const NAV: { group: string; items: { id: string; label: string }[] }[] = [
       { id: "approvals", label: "Owner Approvals" },
       { id: "subreins", label: "Sub-Reins & Revocation" },
       { id: "guard", label: "Counterparty Guard" },
+      { id: "currencies", label: "Tokens, Chains & Accounts" },
       { id: "intents", label: "Cross-Chain Quotes" },
     ],
   },
@@ -242,7 +243,7 @@ export default function DocsPage() {
 
             <div className="docdiagram">
               {`you.testnet  `}<span className="mut">(full-access key: deposits, approvals, revokes)</span>{`
-   ├── vault in reins-demo.testnet   `}<span className="mut">Ⓝ1.7</span>{`
+   ├── vault in reins-near.testnet   `}<span className="mut">Ⓝ1.7</span>{`
    └── `}<b>rein #2</b>{`   `}<span className="mut">Ⓝ0.5 / day · Ⓝ0.2 per payment · ask above Ⓝ0.1</span>{`   ← function-call key on you.testnet
         └── `}<b>sub-rein #3</b>{`   `}<span className="mut">Ⓝ0.1 / day</span>{`   ← issued by the agent, key added by you`}
             </div>
@@ -439,6 +440,23 @@ AddKey ed25519:… FunctionCall { receiver: ${CONTRACT_ID}, methods: [pay, reque
             </p>
           </Section>
 
+          {/* ---- Currencies ---- */}
+          <Section id="currencies" title="Tokens, Chains & Accounts">
+            <p className="docp">
+              A rein&apos;s terms pick what it spends. With no extra field it pays NEAR from your vault. With{" "}
+              <code>token</code> set to a NEP-141 contract (tUSD on the demo) it pays that token with <code>ft_transfer</code>{" "}
+              from your token vault; fund it with the token&apos;s <code>ft_transfer_call</code> to the Reins contract. With{" "}
+              <code>evm_chain_id</code> set (84532, Base Sepolia) the agent calls <code>pay_evm</code>: the contract checks the
+              rein and asks NEAR&apos;s Chain Signatures network (<code>v1.signer-prod.testnet</code>) to sign the EVM
+              payment from an address derived for that rein. Amounts are in the currency&apos;s smallest unit.
+            </p>
+            <p className="docp">
+              Pass <code>agent_account</code> to <code>create_rein</code> to put the agent&apos;s key on a named sub-account
+              such as <code>research.you.testnet</code> instead of your own account. The Connect wizard creates the
+              sub-account, funds its storage and adds the key in the same wallet approval.
+            </p>
+          </Section>
+
           {/* ---- Intents ---- */}
           <Section id="intents" title="Cross-Chain Quotes">
             <p className="docp">
@@ -457,7 +475,9 @@ AddKey ed25519:… FunctionCall { receiver: ${CONTRACT_ID}, methods: [pay, reque
                 ["create_rein / create_subrein", "owner", "attach storage (about 0.02 NEAR)"],
                 ["update_terms · freeze · unfreeze · revoke · revoke_all", "owner", "1 yocto"],
                 ["approve_request · reject_request · set_allow", "owner", "1 yocto"],
-                ["pay · request_approval · issue_subrein", "agent key", "no deposit"],
+                ["pay · pay_evm · request_approval · issue_subrein", "agent key", "no deposit"],
+                ["withdraw_token", "owner", "1 yocto"],
+                ["ft_on_transfer", "token contract", "credits your token vault"],
                 ["report · retract_report", "anyone", "0.1 NEAR bond · 1 yocto"],
                 ["preview_pay · get_rein · reins_of · rein_for_key · vault_of", "view", "free"],
                 ["pending_requests_of · reports_of · is_blocked · pair_count · stats", "view", "free"],

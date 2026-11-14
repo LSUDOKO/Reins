@@ -145,6 +145,9 @@ function Status({ stats, version }: { stats: Stats; version: string | null }) {
         <Stat n={stats.reins} label="reins" />
         <Stat n={stats.payments} label="payments settled" />
         <Stat n={stats.requests} label="approval requests" />
+        {typeof (stats as { evm_signatures?: number }).evm_signatures === "number" && (
+          <Stat n={(stats as { evm_signatures?: number }).evm_signatures as number} label="Chain Signatures signed" />
+        )}
         <span className="khstat">
           <b>Ⓝ{fromYocto(stats.volume)}</b> moved
         </span>
@@ -176,7 +179,7 @@ function Stat({ n, label, bad }: { n: number; label: string; bad?: boolean }) {
 // ---------------------------------------------------------------------------
 
 function Check({ owner }: { owner: string }) {
-  const [account, setAccount] = useState("reins-demo-drain.testnet");
+  const [account, setAccount] = useState("reins-near-drain.testnet");
   const [busy, setBusy] = useState(false);
   const [res, setRes] = useState<{ a: Assessment; reports: Report[]; blocked: boolean; prior: number } | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -203,7 +206,7 @@ function Check({ owner }: { owner: string }) {
     [owner],
   );
   useEffect(() => {
-    void run("reins-demo-drain.testnet");
+    void run("reins-near-drain.testnet");
   }, [run]);
 
   const dot = (l: string) => (l === "block" ? "bad" : l === "warn" ? "wait" : "ok");

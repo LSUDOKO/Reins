@@ -8,20 +8,25 @@
     "typecheck": "tsc --noEmit",
     "receipts": "mkdir -p public && cp ../../demo/receipts.json public/receipts.json",
     "predev": "bun run receipts",
-    "prebuild": "bun run receipts"
+    "prebuild": "bun run receipts",
+    "deploy:cf": "wrangler pages deploy out --project-name reins"
   },
   "dependencies": {
+    "@near-js/crypto": "^2.5.1",
+    "@near-js/transactions": "^2.5.1",
     "@near-wallet-selector/core": "^10.1.4",
+    "@near-wallet-selector/here-wallet": "10.1.4",
+    "@near-wallet-selector/hot-wallet": "10.1.4",
+    "@near-wallet-selector/intear-wallet": "10.1.4",
     "@near-wallet-selector/modal-ui": "^10.1.4",
     "@near-wallet-selector/my-near-wallet": "^10.1.4",
+    "@near-wallet-selector/sender": "10.1.4",
     "@reins/sdk": "workspace:*",
     "motion": "^12.40.0",
+    "near-api-js": "^7.5.3",
     "next": "16.3.5",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "@near-js/transactions": "^2.5.1",
-    "@near-js/crypto": "^2.5.1",
-    "near-api-js": "^7.5.3"
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@types/node": "^22",

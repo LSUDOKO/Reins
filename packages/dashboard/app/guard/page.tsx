@@ -11,6 +11,8 @@ import { DEMO_OWNER } from "@/lib/chain";
 import { useWallet } from "@/lib/near";
 import { Cockpit } from "../components/Shell";
 import Guard from "../components/Guard";
+import { ScreenBox } from "../components/Plain";
+import { Brush } from "../components/Brand";
 
 export default function GuardPage() {
   return (
@@ -29,7 +31,10 @@ function GuardInner() {
   return (
     <Cockpit back={{ href: "/app", label: "Dashboard" }} wallet={wallet} refresh={refresh} onLogout={() => void wallet.signOut()} address={owner}>
       <div style={{ padding: "0 8px" }}>
-        <h1 style={{ fontSize: 22, margin: "4px 0 14px" }}>Guard</h1>
+        <h1 style={{ fontSize: "clamp(32px,5vw,56px)", margin: "10px 0 18px", lineHeight: 0.95 }}>
+          <Brush>Guard</Brush>
+        </h1>
+        <ScreenBox />
         <Guard owner={owner} />
       </div>
     </Cockpit>
