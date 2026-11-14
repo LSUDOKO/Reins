@@ -1,0 +1,12 @@
+target/
+node_modules/
+.env
+.env.*
+!.env.example
+*.pem
+credentials/
+.near-credentials/
+dist/
+.DS_Store
+*.log
+!demo/logs/*.log
