@@ -51,6 +51,25 @@ export class AgentClient {
     return this.reins.previewPay(this.ownerId, this.publicKey, receiver, toYocto(amountNear));
   }
 
+  /** Raw-unit payment for token reins (e.g. 2_000_000 = 2 tUSD at 6 decimals). No guard. */
+  rawPayUnits(receiver: string, units: string, memo?: string): Promise<TxResult> {
+    return this.send("pay", { receiver, amount: units, memo: memo ?? null });
+  }
+
+  /**
+   * Chain Signatures payment: the contract builds an EIP-1559 value transfer, checks it
+   * against the rein and has the MPC network sign it. Returns the event with the signature
+   * and transaction fields (assemble with `signedTx` from ./evm).
+   */
+  async payEvm(p: { to: string; valueWei: string; nonce: number; maxFeePerGas: string; maxPriorityFeePerGas: string }) {
+    const tx = await sendCall(this.account, this.contractId, "pay_evm", {
+      to: p.to, value: p.valueWei, nonce: String(p.nonce),
+      max_fee_per_gas: p.maxFeePerGas, max_priority_fee_per_gas: p.maxPriorityFeePerGas,
+    }, 300_000_000_000_000n, 0n);
+    const signed = tx.events.find((e) => e.event === "evm_payment_signed")?.data[0];
+    return { ...tx, signature: signed?.signature, evmTx: signed?.tx };
+  }
+
   /** Direct contract call, no counterparty guard. The contract still enforces the terms. */
   rawPay(receiver: string, amountNear: string, memo?: string): Promise<TxResult> {
     return this.send("pay", { receiver, amount: toYocto(amountNear), memo: memo ?? null });
