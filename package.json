@@ -1,0 +1,13 @@
+{
+  "name": "reins",
+  "private": true,
+  "type": "module",
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "test": "bun test packages",
+    "test:contract": "cargo test -p reins",
+    "verify": "bun run scripts/verify.ts",
+    "demo": "bun run scripts/demo.ts",
+    "attack": "bun run scripts/attack.ts"
+  }
+}
