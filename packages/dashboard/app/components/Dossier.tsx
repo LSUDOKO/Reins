@@ -9,15 +9,15 @@
 // behind a quiet segmented toggle. Card swaps animate ONLY the per-card
 // readings (name, money, caption, open pane) with a short in-place fade;
 // the verbs, tabs and carousel chrome never move.
-// All v1 state machines (connect / freeze / revoke) are preserved verbatim.
+// Every verb is a transaction the owner's NEAR wallet signs.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, type Variants } from "motion/react";
-import { api, type CardState, type FiatCard, type TreeNode } from "@/lib/api";
-import type { useRemit } from "../useRemit";
+import type { CardState, TreeNode } from "@/lib/api";
+import type { Wallet } from "@/lib/near";
 import { CardHero } from "./CardHero";
 import { ConnectOverlay } from "./ConnectOverlay";
-import { DeleteButton, RevokeButton, TermsGrid, allowance, caveatCount, perTradeEnforces } from "./Authority";
+import { RevokeButton, TermsGrid, allowance, caveatCount } from "./Authority";
 import { ChargeList, feedStats, type FeedRow } from "./Activity";
 import { SubRows } from "./SubCards";
 import {
@@ -32,7 +32,6 @@ import {
   useCountUp,
 } from "./ui";
 
-type Remit = ReturnType<typeof useRemit>;
 type Tab = "activity" | "terms" | "subs";
 
 // the swap choreography, kept quiet: old and new content occupy the same
@@ -61,25 +60,25 @@ export function Dossier({
   kAgent,
   kmap,
   feed,
-  remit,
+  wallet,
+  canWrite,
   refresh,
   roots,
   currentId,
   onSelect,
   onIssue,
-  onDeleted,
 }: {
   node: TreeNode | null; // the selected card + its direct children
   kAgent?: string;
   kmap: Map<string, string>;
   feed: FeedRow[];
-  remit: Remit;
+  wallet: Wallet;
+  canWrite: boolean; // the signed-in wallet owns these reins
   refresh: () => void | Promise<void>;
-  roots: TreeNode[]; // the deck: root cards (card pages pass just [node])
+  roots: TreeNode[]; // the deck: root reins (rein pages pass just [node])
   currentId?: string | null;
   onSelect?: (cardId: string) => void; // deck selection (home only)
   onIssue?: () => void; // the + beside the dots: the ONLY create affordance
-  onDeleted?: () => void | Promise<void>; // after a dead card is deleted (card pages navigate home)
 }) {
   const card = node?.card ?? null;
   const dead = card ? isDead(card.status) : false;
@@ -88,73 +87,19 @@ export function Dossier({
   // the bottom pane toggle survives card swaps (compare terms across cards)
   const [tab, setTab] = useState<Tab>("activity");
 
-  // the linked test-mode Visa per card (owner view) · fetched once per card,
-  // cached for the session so swapping back never flickers the PAN
-  const [fiatMap, setFiatMap] = useState<Map<string, FiatCard>>(new Map());
-  useEffect(() => {
-    // "specimen" is the tour's local-only card · it has no server row to fetch
-    if (!heroId || heroId === "specimen" || fiatMap.has(heroId)) return;
-    let live = true;
-    api
-      .fiatCard(heroId)
-      .then((f) => {
-        if (live) setFiatMap((m) => new Map(m).set(heroId, f));
-      })
-      .catch(() => {});
-    return () => {
-      live = false;
-    };
-    // fiatMap intentionally not a dep: the has() guard already de-dupes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [heroId]);
-
-  // Connect state lives here so the verb can open the credential overlay ·
-  // the page never moves. Switching cards drops the previous credential.
-  const [connectUrl, setConnectUrl] = useState<string | null>(null);
+  // Connect opens the overlay with the rein's key and the MCP install commands ·
+  // switching reins closes it.
   const [connectOpen, setConnectOpen] = useState(false);
-  const [rotating, setRotating] = useState(false);
-  const heroRef = useRef(heroId);
-  useEffect(() => {
-    heroRef.current = heroId;
-    setConnectOpen(false);
-    setConnectUrl(null);
-  }, [heroId]);
+  useEffect(() => setConnectOpen(false), [heroId]);
   const closeConnect = useCallback(() => setConnectOpen(false), []);
-
-  // A credential resolving after the user swiped to another card must be
-  // dropped, or the overlay would title itself with card B while exposing
-  // card A's live URL.
-  const connect = heroId
-    ? async () => {
-        const id = heroId;
-        const url = (await api.url(id)).card_url;
-        if (heroRef.current !== id) return;
-        setConnectUrl(url);
-        setConnectOpen(true);
-      }
-    : undefined;
-  const rotate = heroId
-    ? async () => {
-        const id = heroId;
-        setRotating(true);
-        try {
-          const url = (await api.rotate(id)).card_url;
-          if (heroRef.current !== id) return;
-          setConnectUrl(url);
-        } catch (e) {
-          console.error("rotate failed", e);
-        } finally {
-          setRotating(false);
-        }
-      }
-    : undefined;
+  const connect = heroId ? async () => setConnectOpen(true) : undefined;
 
   // the pane toggle row · labels only: the panes carry their own numbers
   const kids = node?.children ?? [];
   const tabs: { key: Tab; label: string; disabled?: boolean }[] = [
     { key: "activity", label: "Activity" },
-    { key: "terms", label: "Delegation Terms", disabled: !card },
-    { key: "subs", label: "Sub-Cards", disabled: !card },
+    { key: "terms", label: "Terms", disabled: !card },
+    { key: "subs", label: "Sub-Reins", disabled: !card },
   ];
 
   return (
@@ -183,7 +128,6 @@ export function Dossier({
           currentId={currentId ?? heroId}
           kmap={kmap}
           kAgent={kAgent}
-          fiatMap={fiatMap}
           onSelect={onSelect}
           onIssue={onIssue}
         />
@@ -199,19 +143,19 @@ export function Dossier({
             <Verbs
               card={card}
               hasKids={kids.length > 0}
-              remit={remit}
+              wallet={wallet}
+              canWrite={canWrite}
               refresh={refresh}
               onConnect={connect}
-              onDeleted={onDeleted}
             />
           </>
         ) : (
           <div className="heroempty">
-            <h1>No Cards Yet</h1>
-            <p>Issue your first card and hand it to an agent · scoped, revocable, dead on revoke</p>
+            <h1>No Reins Yet</h1>
+            <p>Create your first rein and hand its key to an agent · scoped, revocable, dead on revoke</p>
             {onIssue && (
               <button className="dbtn heroissue" onClick={onIssue} data-testid="empty-issue">
-                Issue Your First Card
+                Create Your First Rein
               </button>
             )}
           </div>
@@ -219,7 +163,7 @@ export function Dossier({
       </section>
 
       <div className="bottom">
-        <div className="tabrow" role="tablist" aria-label="Card details" data-tour="panes">
+        <div className="tabrow" role="tablist" aria-label="Rein details" data-tour="panes">
           {tabs.map((t) => (
             <button
               key={t.key}
@@ -260,16 +204,7 @@ export function Dossier({
       </div>
 
       <AnimatePresence>
-        {card && connectOpen && connectUrl && (
-          <ConnectOverlay
-            key="connect"
-            card={card}
-            url={connectUrl}
-            onRotate={rotate}
-            rotating={rotating}
-            onClose={closeConnect}
-          />
-        )}
+        {card && connectOpen && <ConnectOverlay key="connect" card={card} onClose={closeConnect} />}
       </AnimatePresence>
     </main>
   );
@@ -297,7 +232,6 @@ function Carousel({
   currentId,
   kmap,
   kAgent,
-  fiatMap,
   onSelect,
   onIssue,
 }: {
@@ -305,7 +239,6 @@ function Carousel({
   currentId?: string | null;
   kmap: Map<string, string>;
   kAgent?: string;
-  fiatMap?: Map<string, FiatCard>;
   onSelect?: (cardId: string) => void;
   onIssue?: () => void;
 }) {
@@ -348,7 +281,7 @@ function Carousel({
   }, [canWheel, hasStack]);
 
   if (roots.length === 0) {
-    return <div className="bayempty">The bay is empty · your first card appears here</div>;
+    return <div className="bayempty">The bay is empty · your first rein appears here</div>;
   }
 
   return (
@@ -404,8 +337,6 @@ function Carousel({
                 card={n.card}
                 holder={n.card.name}
                 agentAddress={kmap.get(n.card.card_id) ?? (active ? kAgent : undefined)}
-                fiat={fiatMap?.get(n.card.card_id)}
-                fiatPending={active && !isDead(n.card.status) && !fiatMap?.has(n.card.card_id)}
                 flipped={active && flipped}
                 onFlip={() => active && setFlipped((f) => !f)}
               />
@@ -418,8 +349,8 @@ function Carousel({
             onClick={onIssue}
             data-testid="issue-open"
             aria-haspopup="dialog"
-            aria-label="Issue a new card"
-            title="Issue a new card"
+            aria-label="Create a new rein"
+            title="Create a new rein"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden>
               <path d="M12 5v14M5 12h14" />
@@ -443,11 +374,11 @@ function Carousel({
   );
 }
 
-/** "2 live cards · $30.00 / wk delegated" · the wallet aggregate (profile menu) */
+/** "2 live reins · Ⓝ1.50 / day held" · the owner aggregate (profile menu) */
 export function bayAggregate(roots: TreeNode[]): string {
   const live = roots.filter((n) => !isDead(n.card.status));
-  if (live.length === 0) return "No live cards";
-  const cards = `${live.length} live card${live.length === 1 ? "" : "s"}`;
+  if (live.length === 0) return "No live reins";
+  const cards = `${live.length} live rein${live.length === 1 ? "" : "s"}`;
   let sum = 0;
   const periods = new Set<string>();
   for (const n of live) {
@@ -463,7 +394,7 @@ export function bayAggregate(roots: TreeNode[]): string {
   }
   if (sum === 0) return cards;
   const suffix = periods.size === 1 ? (periods.has("lifetime") ? " lifetime" : ` / ${[...periods][0]}`) : "";
-  return `${cards} · ${fmtNear(sum)}${suffix} delegated`;
+  return `${cards} · ${fmtNear(sum)}${suffix} on reins`;
 }
 
 // ---------------------------------------------------------------------------
@@ -473,32 +404,29 @@ export function bayAggregate(roots: TreeNode[]): string {
 
 function Verbs({
   card,
-  hasKids,
-  remit,
+  wallet,
+  canWrite,
   refresh,
   onConnect,
-  onDeleted,
 }: {
   card: CardState;
-  hasKids: boolean;
-  remit: Remit;
+  wallet: Wallet;
+  canWrite: boolean;
   refresh: () => void | Promise<void>;
   onConnect?: () => Promise<void>;
-  onDeleted?: () => void | Promise<void>;
 }) {
   const dead = isDead(card.status);
   const frozen = card.status === "frozen";
   const [busy, setBusy] = useState(false);
-  const [revealing, setRevealing] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  // a verb error belongs to the card it fired on, not the next selection
+  // a verb error belongs to the rein it fired on, not the next selection
   useEffect(() => setMsg(null), [card.card_id]);
 
-  const act = (fn: () => Promise<unknown>, label: string) => async () => {
+  const act = (method: string, label: string) => async () => {
     setBusy(true);
     setMsg(null);
     try {
-      await fn();
+      await wallet.call(method, { id: Number(card.card_id) });
       await refresh();
     } catch (e) {
       setMsg(`${label} failed: ${e instanceof Error ? e.message : e}`);
@@ -506,80 +434,35 @@ function Verbs({
       setBusy(false);
     }
   };
-  // the connect reveal is read-only · it must not lock freeze/revoke (nor they it)
-  const reveal = onConnect
-    ? async () => {
-        setRevealing(true);
-        setMsg(null);
-        try {
-          await onConnect();
-        } catch (e) {
-          setMsg(`Reveal URL failed: ${e instanceof Error ? e.message : e}`);
-        } finally {
-          setRevealing(false);
-        }
-      }
-    : undefined;
+  const lock = canWrite ? undefined : "Sign in as the owner to do this";
 
   return (
     <div className="verbcol" data-tour="verbs">
       <div className="verbs">
-        {dead ? (
-          <>
-            <button className="vpill primary" disabled>
-              <IconConnect />
-              Connect Agent
-            </button>
-            <button className="vpill" disabled>
-              <IconSnowflake size={13} />
-              Freeze
-            </button>
-          </>
-        ) : (
-          <>
-            {reveal && (
-              <button className="vpill primary" disabled={revealing} onClick={reveal} data-testid="reveal-url">
-                <IconConnect />
-                Connect Agent
-              </button>
-            )}
-            {card.status === "active" && (
-              <button
-                className="vpill"
-                disabled={busy}
-                onClick={act(() => api.freeze(card.card_id), "Freeze")}
-                data-testid="freeze"
-                title="Freeze this card"
-              >
-                <IconSnowflake size={13} />
-                Freeze
-              </button>
-            )}
-            {frozen && (
-              <button
-                className="vpill iced"
-                disabled={busy}
-                onClick={act(() => api.unfreeze(card.card_id), "Unfreeze")}
-                data-testid="unfreeze"
-                title="Unfreeze this card"
-              >
-                <IconSnowflake size={13} />
-                Unfreeze
-              </button>
-            )}
-          </>
+        <button className="vpill primary" disabled={dead || !onConnect} onClick={() => void onConnect?.()} data-testid="reveal-key">
+          <IconConnect />
+          Connect Agent
+        </button>
+        {!dead && card.status === "active" && (
+          <button className="vpill" disabled={busy || !canWrite} onClick={act("freeze", "Freeze")} data-testid="freeze" title={lock ?? "Freeze this rein"}>
+            <IconSnowflake size={13} />
+            Freeze
+          </button>
         )}
-        {/* outside the dead/live fork so the instance (and its open modal) survives the status flip */}
-        <RevokeButton
-          cardId={card.card_id}
-          isSub={!!card.parent_card_id}
-          revocable={!dead}
-          signDelegation={remit.signDelegation}
-          embeddedReady={remit.embeddedReady}
-          onDone={refresh}
-        />
-        {/* a dead card's one remaining verb: leave the books */}
-        {dead && <DeleteButton cardId={card.card_id} hasKids={hasKids} onDone={onDeleted ?? refresh} />}
+        {(dead || frozen) && (
+          <button
+            className={`vpill${frozen ? " iced" : ""}`}
+            disabled={dead || busy || !canWrite}
+            onClick={act("unfreeze", "Unfreeze")}
+            data-testid="unfreeze"
+            title={lock ?? "Unfreeze this rein"}
+          >
+            <IconSnowflake size={13} />
+            {frozen ? "Unfreeze" : "Freeze"}
+          </button>
+        )}
+        {/* stays mounted across the status flip so its done state survives */}
+        <RevokeButton card={card} revocable={!dead} wallet={wallet} canWrite={canWrite} onDone={refresh} />
       </div>
       {msg && <p className="err verbmsg">{msg}</p>}
     </div>
@@ -605,35 +488,22 @@ function HeadBody({ card }: { card: CardState }) {
   const dead = isDead(card.status);
   const frozen = card.status === "frozen";
   const { cap, remaining, spentPct } = allowance(card);
-  const ct = card.terms.contract;
-  const metered = cap !== null; // a pay budget governs this card
-  const ptLive = ct ? perTradeEnforces(ct) : false;
 
-  // the headline figure: a dead card shows its cap, ghosted (the epitaph state)
-  const figTarget = dead ? (cap ?? 0) : metered ? (remaining ?? 0) : ptLive ? parseFloat(ct?.perTradeMax ?? "0") : (remaining ?? 0);
+  // the headline figure: a dead rein shows its cap, ghosted (the epitaph state)
+  const figTarget = dead ? (cap ?? 0) : (remaining ?? 0);
   const animated = useCountUp(figTarget);
   const [whole, cents] = splitAmount(animated);
 
-  // what the figure means · the caption's first clause
   const plabel = card.terms.pay?.period ? periodLabel(card.terms.pay.period.seconds) : null;
   const span = plabel === "day" ? "today" : plabel === "wk" ? "this week" : plabel === "mo" ? "this month" : "lifetime";
-  const scope = metered
-    ? `of $${cap.toLocaleString("en-US", { minimumFractionDigits: 2 })} ${span}${
-        ct ? ` · + execute · ${ct.targets.length} contract${ct.targets.length === 1 ? "" : "s"}` : ""
-      }`
-    : ct && ptLive
-      ? `per trade · ${ct.targets.length} contract${ct.targets.length === 1 ? "" : "s"} / ${ct.selectors.length} method${ct.selectors.length === 1 ? "" : "s"}`
-      : ct
-        ? `contract${ct.targets.length === 1 ? "" : "s"} in scope · ${ct.selectors.length} method${ct.selectors.length === 1 ? "" : "s"}`
-        : "unmetered";
+  const scope = `of Ⓝ${(cap ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2 })} ${span}`;
 
-  // when it changes · countdown for the living, epitaph for the dead
   const when = dead
     ? card.status === "expired" && card.expires_at
       ? `expired ${new Date(card.expires_at * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
-      : `${card.status} · authority dead on-chain`
+      : `${card.status} · the key is dead on-chain`
     : frozen
-      ? "frozen · spends refuse until unfrozen"
+      ? "frozen · payments refuse until unfrozen"
       : card.period_resets_at
         ? `resets in ${fmtCountdown(card.period_resets_at)}`
         : card.expires_at
@@ -647,28 +517,15 @@ function HeadBody({ card }: { card: CardState }) {
     <motion.div className="dbody" variants={zoneVariants} initial="enter" animate="center" exit="exit">
       <motion.div className="money num" variants={rowVariants}>
         <div className="fig">
-          {metered || ptLive || !ct ? (
-            <span data-testid="remaining">
-              <span className="cur">Ⓝ</span>
-              <span className="int">{whole}</span>
-              <span className="dec">.{cents}</span>
-            </span>
-          ) : (
-            <span>
-              <span className="int">{ct.targets.length}</span>
-            </span>
-          )}
+          <span data-testid="remaining">
+            <span className="cur">Ⓝ</span>
+            <span className="int">{whole}</span>
+            <span className="dec">.{cents}</span>
+          </span>
         </div>
         <div className="gaugerow">
           <div className="gauge">
-            <div
-              className="fill"
-              style={
-                metered
-                  ? { width: dead ? "0%" : `${leftPct}%` }
-                  : { width: dead ? "0%" : "100%", background: "var(--hairline)" }
-              }
-            />
+            <div className="fill" style={{ width: dead ? "0%" : `${leftPct}%` }} />
           </div>
         </div>
         <div className="caption">
@@ -687,10 +544,10 @@ function ActivityPane({ card, feed }: { card: CardState | null; feed: FeedRow[] 
   const { bins, binLabels, dayLabels } = feedStats(feed);
   const dead = card ? isDead(card.status) : false;
   const empty = !card
-    ? "No activity yet · issue a card to begin"
+    ? "No activity yet · create a rein to begin"
     : dead
-      ? `No activity · authority ${card.status}`
-      : "No charges yet · connect an agent and let it spend";
+      ? `No activity · rein ${card.status}`
+      : "No recorded payments yet · connect an agent and let it spend";
 
   return (
     <>
@@ -726,8 +583,8 @@ function TermsPane({ card, kAgent }: { card: CardState; kAgent?: string }) {
     <motion.div className="dr panein" variants={rowVariants}>
       <p className="panenote">
         {dead
-          ? "Enforcement ended · the delegation is dead on-chain"
-          : `${caveatCount(card)} caveats enforced on-chain · nothing here is a promise, it's the authority itself`}
+          ? "Enforcement ended · the contract no longer knows this key"
+          : `${caveatCount(card)} rules enforced by the contract on every payment · nothing here is a promise`}
       </p>
       <TermsGrid card={card} agentAddress={kAgent} />
     </motion.div>
@@ -746,10 +603,10 @@ function SubsPane({ card, node, kmap }: { card: CardState; node: TreeNode; kmap:
       ) : (
         <div className="subnote">
           {!allowed
-            ? "Terms on this card don't permit sub-cards"
+            ? "Terms on this rein don't permit sub-reins"
             : dead
               ? "None carved before revoke · the tree is empty"
-              : "None yet · the agent holding this card carves them itself: connect it, then ask it to issue a sub-card (the issue_subcard tool) · caps only narrow downward, and they appear here"}
+              : "None yet · the agent holding this rein carves them itself (the issue_subrein tool), then you add the sub-agent's key to your account · caps only narrow downward, and they appear here"}
         </div>
       )}
     </motion.div>
