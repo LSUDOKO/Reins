@@ -1,6 +1,6 @@
 "use client";
 
-// Activity: the tree-wide charge feed (crypto + fiat, one budget) with card
+// Activity: the tree-wide payment feed, read back from the chain, with rein
 // attribution · the compact dossier list and the 30-day daily-spend stats.
 
 import type { Charge } from "@/lib/api";
@@ -14,11 +14,8 @@ export type FeedRow = { ch: Charge; cardName: string };
 export const chargeOk = (ch: Charge) => OK_STATUSES.has(ch.status);
 
 export function railLabel(kind: string): string {
-  if (kind.includes("fiat") || kind.includes("visa") || kind.includes("stripe")) return "Fiat";
-  if (kind.includes("x402")) return "x402";
-  // a direct card payment is a USDC transfer, not an x402 purchase
-  if (kind.includes("pay") || kind.includes("transfer")) return "USDC";
-  return kind;
+  // every rein payment is a native NEAR transfer out of the owner's vault
+  return kind === "near" ? "NEAR" : kind;
 }
 
 // raw server statuses must never leak verbatim (snake_case / lowercase breaks the
