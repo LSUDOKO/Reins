@@ -1,6 +1,6 @@
 "use client";
 
-// The card object, two-sided. Front = the essentials only (wordmark, ticking
+// The rein, drawn as a card, two-sided. Front = the essentials only (wordmark, ticking
 // chip, PAN, holder). The back is sparse and honest, like a real card: the
 // magstripe, a signature strip, two quiet facts, the brand line. No secrets
 // live on the card · the credential opens in the connect overlay, so the flip
@@ -9,23 +9,20 @@
 // grayscale + a corner tag. No stamps.
 
 import { useRef, useState } from "react";
-import type { CardState, FiatCard } from "@/lib/api";
-import { capWord, ChipDots, Guilloche, IconSnowflake, isDead, panGroups, shortHex } from "./ui";
+import type { CardState } from "@/lib/api";
+import { CHAIN_NAME } from "@/lib/chain";
+import { capWord, ChipDots, Guilloche, IconSnowflake, isDead, keyHex, panGroups, shortHex } from "./ui";
 
 export function CardHero({
   card,
   holder,
   agentAddress,
-  fiat,
-  fiatPending = false,
   flipped,
   onFlip,
 }: {
   card: CardState;
   holder?: string;
   agentAddress?: string;
-  fiat?: FiatCard | null; // the linked test-mode Visa · real PAN/exp on the face, cvc on the back
-  fiatPending?: boolean; // credential fetch in flight · hold placeholder dots, never flash the hex PAN
   flipped: boolean;
   onFlip: () => void;
 }) {
@@ -35,17 +32,9 @@ export function CardHero({
   const frozen = card.status === "frozen";
   const stateClass = dead ? "cardstate-dead" : frozen ? "cardstate-frozen" : "cardstate-active";
 
-  // a fiat-linked card wears its REAL credentials (test-mode Visa); a card whose
-  // credential fetch is still in flight holds quiet dots (no hex-then-Visa
-  // flash); only a settled UNLINKED card falls back to the hex pseudo-PAN
-  const visa = fiat?.linked && fiat.number ? fiat : null;
-  const pan = visa
-    ? (visa.number!.replace(/\s+/g, "").match(/.{1,4}/g) ?? [])
-    : fiatPending
-      ? ["••••", "••••", "••••", "••••"]
-      : panGroups(agentAddress ?? card.card_id);
-  const exp = visa ? `${String(visa.exp_month).padStart(2, "0")}/${String(visa.exp_year).slice(-2)}` : null;
-  const brand = visa ? capWord(visa.brand ?? "Visa") : null;
+  // the "PAN" is the agent's public key: the one thing that identifies this rein on-chain
+  const key = agentAddress ?? card.agent_key;
+  const pan = panGroups(keyHex(key));
 
   const onMove = (e: React.MouseEvent) => {
     const el = flipRef.current;
@@ -86,7 +75,7 @@ export function CardHero({
             </div>
             <div className="inner">
               <div className="row1">
-                <span className="wm">keepercard</span>
+                <span className="wm">reins</span>
                 {frozen && (
                   <span className="ctag frozen">
                     <IconSnowflake size={10} />
@@ -100,11 +89,9 @@ export function CardHero({
                 {pan.map((g, i) => (
                   <span key={i}>{g}</span>
                 ))}
-                {brand && <span className="brandmark">{brand}</span>}
               </div>
               <div className="holderline">
                 <span className="hname">{holder ?? card.name}</span>
-                {exp && <span className="hexp">{exp}</span>}
               </div>
             </div>
             <div className="frost" />
@@ -113,29 +100,21 @@ export function CardHero({
           <div className="card face back">
             <div className="bstrip" />
             <div className="backin">
-              <span className="siglabel">Authorized Delegate</span>
+              <span className="siglabel">Agent Key</span>
               <div className="sigstrip">
                 <span className="signame">{holder ?? card.name}</span>
-                {visa?.cvc && (
-                  <span className="sigcvc num" title="CVC">
-                    {visa.cvc}
-                  </span>
-                )}
               </div>
               <span className="bfacts data">
-                Base · mainnet{agentAddress ? ` · ${shortHex(agentAddress)}` : ""}
-                {brand ? ` · ${brand} test mode` : ""}
+                {CHAIN_NAME} · {shortHex(key, 14, 4)}
               </span>
               <p className="backhint">
                 {dead
-                  ? "This card's authority is gone."
-                  : visa
-                    ? "The Visa is real (test mode) · every charge it makes still answers to this card's on-chain budget."
-                    : "No secrets on this card · connecting an agent reveals the credential."}
+                  ? "This rein's key is gone."
+                  : "A function-call key on your account · it can pay within these terms and nothing else."}
               </p>
               <div className="bfoot">
-                <span className="bwm">keepercard</span>
-                <span className="bnote">Authority, lent not given.</span>
+                <span className="bwm">reins</span>
+                <span className="bnote">Spend, held on a rein.</span>
               </div>
             </div>
             <div className="bband">
