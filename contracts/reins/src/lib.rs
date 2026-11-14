@@ -33,6 +33,8 @@ pub use types::*;
 pub const MAX_DEPTH: usize = 3;
 pub const MAX_CHILDREN: usize = 8;
 pub const MAX_REINS_PER_OWNER: usize = 32;
+/// Reins ever created per owner, revoked included, so per-owner loops stay bounded.
+pub const MAX_REINS_TOTAL_PER_OWNER: usize = 128;
 pub const MAX_PENDING_PER_REIN: u8 = 4;
 pub const MAX_REPORTS_PER_ACCOUNT: usize = 16;
 pub const MAX_LABEL: usize = 64;

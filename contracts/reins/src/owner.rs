@@ -93,6 +93,12 @@ impl Reins {
             })
             .unwrap_or(0);
         require!(live < MAX_REINS_PER_OWNER, "too_many_reins");
+        let total = self
+            .owner_reins
+            .get(owner)
+            .map(|ids| ids.len())
+            .unwrap_or(0);
+        require!(total < MAX_REINS_TOTAL_PER_OWNER, "too_many_reins_ever");
 
         if let Some(pid) = parent {
             let p = self.owned(pid, owner).clone();
@@ -155,14 +161,10 @@ impl Reins {
             if r.status == Status::Revoked {
                 continue;
             }
-            if status == Status::Revoked {
-                let k = key_of(&r.agent_account, &r.agent_key);
-                r.status = Status::Revoked;
-                stack.extend(r.children.iter().copied());
-                self.key_index.remove(&k);
-            } else {
-                r.status = status;
-            }
+            // Freeze, unfreeze and revoke all apply to the whole subtree. A revoked key stays
+            // in the index pointing at its revoked rein, so it can never be bound again.
+            r.status = status;
+            stack.extend(r.children.iter().copied());
             touched.push(rid);
         }
         touched
@@ -170,22 +172,23 @@ impl Reins {
 
     pub(crate) fn send(
         &mut self,
-        chain: Vec<ReinId>,
+        booking: Booking,
         owner: AccountId,
         receiver: AccountId,
         amount: u128,
         memo: Option<String>,
         request: Option<RequestId>,
     ) -> Promise {
-        let token = self.rein(chain[0]).terms.token.clone();
-        let transfer = match token {
+        // EVM reins never move funds held by this contract.
+        require!(!booking.evm, "evm_rein_use_pay_evm");
+        let transfer = match booking.token.clone() {
             None => Promise::new(receiver.clone()).transfer(NearToken::from_yoctonear(amount)),
             Some(t) => crate::tokens::ft_transfer(t, receiver.clone(), amount, memo.clone()),
         };
         transfer.then(
             Self::ext(env::current_account_id())
                 .with_static_gas(CALLBACK_GAS)
-                .on_paid(chain, owner, receiver, U128(amount), memo, request),
+                .on_paid(booking, owner, receiver, U128(amount), memo, request),
         )
     }
 }
@@ -195,7 +198,10 @@ impl Reins {
     /// Add NEAR to the caller's vault.
     #[payable]
     pub fn deposit(&mut self) -> U128 {
+        let before = self.usage();
         let owner = full_access_owner(self);
+        // A first deposit creates the vault entry; its storage comes out of the deposit.
+        self.charge_storage(&owner, before);
         let v = self.vault(&owner);
         emit(
             "deposit",
@@ -276,9 +282,28 @@ impl Reins {
         let before = self.usage();
         let r = self.reins.get_mut(&id).unwrap();
         require!(r.status != Status::Revoked, "rein_revoked");
+        // The currency of a rein is fixed: a payment in flight settles in the currency it was
+        // booked in, and pending requests and EVM nonces assume it does not change.
+        require!(
+            terms.token == r.terms.token && terms.evm_chain_id == r.terms.evm_chain_id,
+            "currency_immutable"
+        );
         r.terms = terms.clone();
         self.charge_storage(&owner, before);
         emit("terms_updated", json!({ "rein_id": id, "terms": terms }));
+    }
+
+    /// Set the next EVM nonce a Chain Signatures rein may sign, e.g. after transactions were
+    /// sent from its derived address outside Reins or a signature was never broadcast.
+    #[payable]
+    pub fn reset_evm_nonce(&mut self, id: ReinId, nonce: U64) {
+        let owner = full_access_owner(self);
+        require!(
+            self.owned(id, &owner).terms.evm_chain_id.is_some(),
+            "not_an_evm_rein"
+        );
+        self.reins.get_mut(&id).unwrap().evm_nonce = nonce;
+        emit("evm_nonce_reset", json!({ "rein_id": id, "nonce": nonce }));
     }
 
     /// Freeze a rein and its sub-reins. Reversible with `unfreeze`.
@@ -350,6 +375,10 @@ impl Reins {
             .unwrap_or_else(|| env::panic_str("request_not_found"));
         require!(req.owner == owner, "not_owner");
         require!(req.state == RequestState::Pending, "request_not_pending");
+        require!(
+            self.rein(req.rein_id).terms.evm_chain_id.is_none(),
+            "evm_rein_use_pay_evm"
+        );
         let at = now();
         if at >= req.expires_at.0 {
             self.close_request(id, RequestState::Expired);
@@ -359,12 +388,19 @@ impl Reins {
             env::panic_str(code);
         }
         self.close_request(id, RequestState::Approved);
-        let chain = self.book(req.rein_id, req.amount.0, at);
+        let booking = self.book(req.rein_id, req.amount.0, at);
         emit(
             "approved",
             json!({ "request_id": id, "rein_id": req.rein_id }),
         );
-        self.send(chain, owner, req.receiver, req.amount.0, req.memo, Some(id))
+        self.send(
+            booking,
+            owner,
+            req.receiver,
+            req.amount.0,
+            req.memo,
+            Some(id),
+        )
     }
 
     #[payable]
