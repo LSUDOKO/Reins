@@ -5,6 +5,9 @@
  *   npm i --no-save playwright@1.49.1 && npx playwright install chromium
  *   node tests/e2e/console.e2e.mjs [https://reins.adoranto737.workers.dev]
  *
+ * Set E2E_ACCOUNT and E2E_KEY to sign in with an existing testnet account ("Use a testnet key")
+ * instead of the faucet, which rate-limits each IP.
+ *
  * Flow: one-click testnet demo account -> deposit 1 NEAR -> Connect wizard with
  * "0.5 NEAR a day, max 0.1 per payment" -> create rein + agent key -> preview_pay says the
  * contract would pay -> freeze -> unfreeze. Exits 1 on a failed expectation or console error.
@@ -28,16 +31,23 @@ const button = (name) => page.locator("button", { hasText: name }).first();
 
 // 1. sign in with a fresh faucet account (key kept in this tab's sessionStorage)
 await page.goto(`${BASE}/app/`, { waitUntil: "load", timeout: 90000 });
-await page.getByTestId("demo-account").click({ timeout: 60000 });
+if (process.env.E2E_ACCOUNT && process.env.E2E_KEY) {
+  await page.locator("button", { hasText: "Use a testnet key" }).click({ timeout: 60000 });
+  await page.getByLabel("Testnet account").fill(process.env.E2E_ACCOUNT);
+  await page.getByLabel("Secret key").fill(process.env.E2E_KEY);
+  await page.locator("button", { hasText: "Sign in with key" }).click();
+} else {
+  await page.getByTestId("demo-account").click({ timeout: 60000 });
+}
 await page.waitForFunction(() => sessionStorage.getItem("reins-key-session"), null, { timeout: 60000 });
 const owner = await page.evaluate(() => JSON.parse(sessionStorage.getItem("reins-key-session")).accountId);
-expect(/\.testnet$/.test(owner), `demo account created: ${owner}`);
+expect(/\.testnet$/.test(owner), `signed in as ${owner}`);
 
 // 2. deposit 1 NEAR into the vault
 await page.goto(`${BASE}/settings/`, { waitUntil: "load", timeout: 90000 });
 await page.locator("button", { hasText: /^Deposit$/ }).first().click();
 await page.waitForTimeout(10000);
-expect((await body()).includes("Ⓝ1"), "vault shows 1 NEAR after deposit");
+expect(/Ⓝ\d/.test(await body()), "vault shows a balance after deposit");
 
 // 3. connect wizard: plain English -> terms -> create rein + key
 await page.goto(`${BASE}/connect/`, { waitUntil: "load", timeout: 90000 });

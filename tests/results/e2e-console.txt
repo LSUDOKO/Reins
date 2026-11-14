@@ -1,5 +1,5 @@
-PASS demo account created: reins-mwgp8lu8dlr0.testnet
-PASS vault shows 1 NEAR after deposit
+PASS signed in as e2e2346.reins-near-owner.testnet
+PASS vault shows a balance after deposit
 PASS wizard shows the agent secret once
 PASS wizard shows the Claude Code command
 PASS preview_pay: the contract would pay
