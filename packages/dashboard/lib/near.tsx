@@ -41,7 +41,13 @@ export type Wallet = {
    * `create_rein` on the contract and AddKey on the owner's own account. Redirect
    * wallets leave the page here; callers persist what they need first.
    */
-  createReinWithKey: (publicKey: string, label: string, terms: Record<string, unknown>, storageNear: string, allowanceNear?: string) => Promise<void>;
+  createReinWithKey: (
+    publicKey: string,
+    label: string,
+    terms: Record<string, unknown>,
+    storageNear: string,
+    opts?: { allowanceNear?: string; agentAccount?: string | null; fundNear?: string },
+  ) => Promise<void>;
   /** Delete a key from the owner's account (revoked agents stop burning gas allowance). */
   deleteKey: (publicKey: string) => Promise<string | null>;
 };
@@ -108,21 +114,25 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
             actionCreators.functionCallAccessKey(CONTRACT_ID, [...AGENT_METHODS], nearToYocto(allowanceNear)),
           ),
         ]),
-      createReinWithKey: async (publicKey, label, terms, storageNear, allowanceNear = AGENT_ALLOWANCE_NEAR) => {
+      createReinWithKey: async (publicKey, label, terms, storageNear, opts = {}) => {
         if (!selector || !accountId) throw new Error("Sign in with your NEAR wallet first");
+        const { allowanceNear = AGENT_ALLOWANCE_NEAR, agentAccount = null, fundNear = "0.1" } = opts;
         const wallet = await selector.wallet();
+        const addKey = actionCreators.addKey(
+          PublicKey.fromString(publicKey),
+          actionCreators.functionCallAccessKey(CONTRACT_ID, [...AGENT_METHODS], nearToYocto(allowanceNear)),
+        );
         const out = await wallet.signAndSendTransactions({
           transactions: [
-            { receiverId: CONTRACT_ID, actions: [actionCreators.functionCall("create_rein", { agent_key: publicKey, label, terms }, GAS, nearToYocto(storageNear))] },
             {
-              receiverId: accountId,
-              actions: [
-                actionCreators.addKey(
-                  PublicKey.fromString(publicKey),
-                  actionCreators.functionCallAccessKey(CONTRACT_ID, [...AGENT_METHODS], nearToYocto(allowanceNear)),
-                ),
-              ],
+              receiverId: CONTRACT_ID,
+              actions: [actionCreators.functionCall("create_rein", { agent_key: publicKey, label, terms, agent_account: agentAccount }, GAS, nearToYocto(storageNear))],
             },
+            // The agent's key lives on the owner's account, or on a fresh named
+            // sub-account of it that holds nothing but that key and a little NEAR for storage.
+            agentAccount
+              ? { receiverId: agentAccount, actions: [actionCreators.createAccount(), actionCreators.transfer(nearToYocto(fundNear)), addKey] }
+              : { receiverId: accountId, actions: [addKey] },
           ],
         });
         for (const o of out ?? []) {
