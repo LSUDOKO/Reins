@@ -242,7 +242,7 @@ export default function DocsPage() {
 
             <div className="docdiagram">
               {`you.testnet  `}<span className="mut">(full-access key: deposits, approvals, revokes)</span>{`
-   ├── vault in reins-demo.testnet   `}<span className="mut">Ⓝ1.7</span>{`
+   ├── vault in reins-near.testnet   `}<span className="mut">Ⓝ1.7</span>{`
    └── `}<b>rein #2</b>{`   `}<span className="mut">Ⓝ0.5 / day · Ⓝ0.2 per payment · ask above Ⓝ0.1</span>{`   ← function-call key on you.testnet
         └── `}<b>sub-rein #3</b>{`   `}<span className="mut">Ⓝ0.1 / day</span>{`   ← issued by the agent, key added by you`}
             </div>

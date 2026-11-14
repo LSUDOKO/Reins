@@ -176,7 +176,7 @@ function Stat({ n, label, bad }: { n: number; label: string; bad?: boolean }) {
 // ---------------------------------------------------------------------------
 
 function Check({ owner }: { owner: string }) {
-  const [account, setAccount] = useState("reins-demo-drain.testnet");
+  const [account, setAccount] = useState("reins-near-drain.testnet");
   const [busy, setBusy] = useState(false);
   const [res, setRes] = useState<{ a: Assessment; reports: Report[]; blocked: boolean; prior: number } | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -203,7 +203,7 @@ function Check({ owner }: { owner: string }) {
     [owner],
   );
   useEffect(() => {
-    void run("reins-demo-drain.testnet");
+    void run("reins-near-drain.testnet");
   }, [run]);
 
   const dot = (l: string) => (l === "block" ? "bad" : l === "warn" ? "wait" : "ok");

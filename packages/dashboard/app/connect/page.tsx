@@ -22,10 +22,10 @@ import { Brush } from "../components/Brand";
 import { Plain } from "../components/Plain";
 
 const PENDING = "reins-pending-agent";
-const MERCHANT = process.env.NEXT_PUBLIC_DEMO_MERCHANT ?? "reins-demo-shop.testnet";
+const MERCHANT = process.env.NEXT_PUBLIC_DEMO_MERCHANT ?? "reins-near-shop.testnet";
 const EXAMPLES = [
   "1 NEAR a day for API credits, max 0.2 per payment, ask me above 0.1",
-  "0.5 NEAR a week, only reins-demo-shop.testnet, expires in 14 days",
+  "0.5 NEAR a week, only reins-near-shop.testnet, expires in 14 days",
   "Research agent: 2 NEAR total, 0.25 per payment, at most 20 payments",
 ];
 const STEPS = ["Describe", "Review", "Create rein", "Agent key", "Connect", "Test"];

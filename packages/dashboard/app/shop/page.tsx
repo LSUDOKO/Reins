@@ -1,7 +1,7 @@
 "use client";
 
 // /shop: the demo merchant ("s0nder data co."), a sibling storefront on the same
-// design system. It sells to agents and is paid in NEAR by reins-demo-shop.testnet.
+// design system. It sells to agents and is paid in NEAR by reins-near-shop.testnet.
 // Checkout takes the owner account and the agent's key: with a secret key the
 // payment is signed in this tab with that function-call key (exactly what an agent
 // does) and the contract decides; with only a public key it runs the free
@@ -16,7 +16,7 @@ import { nearToYocto } from "@/lib/near";
 import s from "./shop.module.css";
 import { SignInGate } from "../components/Gate";
 
-const MERCHANT = process.env.NEXT_PUBLIC_DEMO_MERCHANT ?? "reins-demo-shop.testnet";
+const MERCHANT = process.env.NEXT_PUBLIC_DEMO_MERCHANT ?? "reins-near-shop.testnet";
 
 type Product = { id: string; name: string; price: string; description: string };
 const CATALOG: { merchant: string; products: Product[] } = {
