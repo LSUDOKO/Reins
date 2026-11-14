@@ -1,10 +1,11 @@
 # Shared shell helpers for Reins scripts. Keys stay in ~/.near-credentials, never in the repo.
 set -euo pipefail
-PREFIX="${PREFIX:-reins-demo}"
+PREFIX="${PREFIX:-reins-near}"
 CONTRACT="${CONTRACT:-$PREFIX.testnet}"
 OWNER="${OWNER:-$PREFIX-owner.testnet}"
 MERCHANT="${MERCHANT:-$PREFIX-shop.testnet}"
 SCAMMER="${SCAMMER:-$PREFIX-drain.testnet}"
+TOKEN="${TOKEN:-$PREFIX-tusd.testnet}"
 RPC="${NEAR_RPC:-https://test.rpc.fastnear.com}"
 NET=(network-config testnet)
 
