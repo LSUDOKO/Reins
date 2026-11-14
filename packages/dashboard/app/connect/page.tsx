@@ -16,6 +16,7 @@ import { reins } from "@/lib/api";
 import { AGENT_ALLOWANCE_NEAR, AGENT_METHODS, CONTRACT_ID, DEMO_OWNER, STORAGE_DEPOSIT_NEAR } from "@/lib/chain";
 import { nearToYocto, useWallet } from "@/lib/near";
 import { draft, explain, near } from "@/lib/plain";
+import { CURRENCY_LABEL, currencyFields, currencyOf, fromUnits, toUnits, TUSD, type Currency, type TermsV2 } from "@/lib/currency";
 import { Cockpit } from "../components/Shell";
 import { mcpCommands } from "../components/Authority";
 import { Brush } from "../components/Brand";
@@ -30,8 +31,8 @@ const EXAMPLES = [
 ];
 const STEPS = ["Describe", "Review", "Create rein", "Agent key", "Connect", "Test"];
 
-type Pending = { secret: string; publicKey: string; label: string; owner: string };
-type Form = { label: string; budget: string; period: number; perTx: string; approval: string; merchants: string; days: string; uses: string };
+type Pending = { secret: string; publicKey: string; label: string; owner: string; account: string };
+type Form = { label: string; currency: Currency; sub: string; budget: string; period: number; perTx: string; approval: string; merchants: string; days: string; uses: string };
 
 function loadPending(): Pending | null {
   try {
@@ -43,12 +44,16 @@ function loadPending(): Pending | null {
 }
 
 function toForm(t: Terms, label: string): Form {
+  const c = currencyOf(t as TermsV2);
+  const u = (v: string) => fromUnits(v, c, 6);
   return {
     label,
-    budget: near(t.budget),
+    currency: c,
+    sub: "",
+    budget: u(t.budget),
     period: Number(t.period_secs),
-    perTx: near(t.per_tx_cap),
-    approval: t.approval_above ? near(t.approval_above) : "",
+    perTx: u(t.per_tx_cap),
+    approval: t.approval_above ? u(t.approval_above) : "",
     merchants: (t.merchants ?? []).join(", "),
     days: t.expires_at ? String(Math.max(1, Math.round((Number(t.expires_at) * 1000 - Date.now()) / 86_400_000))) : "",
     uses: t.max_uses ? String(t.max_uses) : "",
@@ -56,7 +61,7 @@ function toForm(t: Terms, label: string): Form {
 }
 
 function toTerms(f: Form): Terms {
-  const y = (v: string) => nearToYocto(v || "0").toString();
+  const y = (v: string) => toUnits(v || "0", f.currency);
   const uses = parseInt(f.uses, 10);
   const days = parseInt(f.days, 10);
   return {
@@ -67,7 +72,14 @@ function toTerms(f: Form): Terms {
     expires_at: Number.isFinite(days) && days > 0 ? String(Math.floor(Date.now() / 1000) + days * 86400) : null,
     max_uses: Number.isFinite(uses) && uses > 0 ? uses : null,
     merchants: f.merchants.trim() ? f.merchants.split(/[\s,]+/).filter(Boolean) : null,
-  };
+    ...currencyFields(f.currency),
+  } as Terms;
+}
+
+/** "research" -> "research.<owner>"; empty -> the owner's own account. */
+function agentAccountOf(f: Form | null, owner: string): string | null {
+  const sub = f?.sub.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "");
+  return sub ? `${sub}.${owner}` : null;
 }
 
 export default function ConnectPage() {
@@ -98,8 +110,8 @@ function Wizard({ owner, canWrite }: { owner: string; canWrite: boolean }) {
 
   // Coming back from a redirect wallet: pick the pending agent up and check the chain.
   const check = useCallback(async (p: Pending) => {
-    const r = await reins.reinForKey(p.owner, p.publicKey).catch(() => null);
-    const allowance = await reins.keyAllowance(p.owner, p.publicKey).catch(() => null);
+    const r = await reins.reinForKey(p.account, p.publicKey).catch(() => null);
+    const allowance = await reins.keyAllowance(p.account, p.publicKey).catch(() => null);
     setReinId(r?.id ?? null);
     setKeyOn(allowance !== null);
     if (r && allowance !== null) setStep(4);
@@ -145,7 +157,8 @@ function Wizard({ owner, canWrite }: { owner: string; canWrite: boolean }) {
     if (parseFloat(form.perTx || form.budget) > parseFloat(form.budget)) return setErr("The per-payment cap can't be above the budget.");
     if (form.approval && parseFloat(form.approval) >= parseFloat(form.perTx || form.budget)) return setErr("Ask-me-above must be below the per-payment cap.");
     const kp = KeyPair.fromRandom("ed25519");
-    const p: Pending = { secret: kp.toString(), publicKey: kp.getPublicKey().toString(), label: form.label || "agent", owner };
+    const agentAccount = agentAccountOf(form, owner);
+    const p: Pending = { secret: kp.toString(), publicKey: kp.getPublicKey().toString(), label: form.label || "agent", owner, account: agentAccount ?? owner };
     try {
       sessionStorage.setItem(PENDING, JSON.stringify(p));
     } catch {
@@ -154,7 +167,7 @@ function Wizard({ owner, canWrite }: { owner: string; canWrite: boolean }) {
     setPending(p);
     setBusy(true);
     try {
-      await wallet.createReinWithKey(p.publicKey, p.label, terms as unknown as Record<string, unknown>, STORAGE_DEPOSIT_NEAR);
+      await wallet.createReinWithKey(p.publicKey, p.label, terms as unknown as Record<string, unknown>, STORAGE_DEPOSIT_NEAR, { agentAccount });
       await check(p);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
@@ -182,7 +195,7 @@ function Wizard({ owner, canWrite }: { owner: string; canWrite: boolean }) {
     setBusy(true);
     setErr(null);
     try {
-      setPreview(await reins.previewPay(pending.owner, pending.publicKey, MERCHANT, nearToYocto("0.01").toString()));
+      setPreview(await reins.previewPay(pending.account, pending.publicKey, MERCHANT, toUnits("0.01", form?.currency ?? "NEAR")));
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
@@ -206,8 +219,10 @@ function Wizard({ owner, canWrite }: { owner: string; canWrite: boolean }) {
   const reachable = (i: number) => i <= 1 ? i === 0 || !!form : i <= 3 ? !!form || !!pending : !!pending && keyOn === true;
   const set = (k: keyof Form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm((f) => (f ? { ...f, [k]: k === "period" ? Number(e.target.value) : e.target.value } : f));
+  const unit = form ? (form.currency === "ETH" ? "ETH" : form.currency) : "NEAR";
   const slug = (pending?.label ?? "agent").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "agent";
-  const cmds = pending ? mcpCommands(pending.owner, pending.secret, `reins-${slug}`) : null;
+  // The MCP server signs as the account that holds the key: the owner, or the agent's sub-account.
+  const cmds = pending ? mcpCommands(pending.account, pending.secret, `reins-${slug}`) : null;
 
   return (
     <div style={{ padding: "6px 4px" }}>
@@ -266,7 +281,15 @@ function Wizard({ owner, canWrite }: { owner: string; canWrite: boolean }) {
                 <p>Change anything. The contract will enforce exactly these numbers.</p>
                 <div className="terms">
                   <label>Name<input value={form.label} onChange={set("label")} maxLength={64} /></label>
-                  <label>Budget (NEAR)<input inputMode="decimal" value={form.budget} onChange={set("budget")} /></label>
+                  <label>
+                    Pays in
+                    <select value={form.currency} onChange={set("currency")}>
+                      {(["NEAR", "tUSD", "ETH"] as Currency[]).map((c) => (
+                        <option key={c} value={c}>{CURRENCY_LABEL[c]}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>Budget ({unit})<input inputMode="decimal" value={form.budget} onChange={set("budget")} /></label>
                   <label>
                     Resets
                     <select value={form.period} onChange={set("period")}>
@@ -276,12 +299,25 @@ function Wizard({ owner, canWrite }: { owner: string; canWrite: boolean }) {
                       <option value={0}>never (total)</option>
                     </select>
                   </label>
-                  <label>Per payment (NEAR)<input inputMode="decimal" value={form.perTx} onChange={set("perTx")} /></label>
-                  <label>Ask me above (NEAR)<input inputMode="decimal" placeholder="off" value={form.approval} onChange={set("approval")} /></label>
+                  <label>Per payment ({unit})<input inputMode="decimal" value={form.perTx} onChange={set("perTx")} /></label>
+                  <label>Ask me above ({unit})<input inputMode="decimal" placeholder="off" value={form.approval} onChange={set("approval")} /></label>
                   <label>Only pay<input placeholder="any account" value={form.merchants} onChange={set("merchants")} /></label>
                   <label>Expires in (days)<input inputMode="numeric" placeholder="never" value={form.days} onChange={set("days")} /></label>
                   <label>Max payments<input inputMode="numeric" placeholder="no limit" value={form.uses} onChange={set("uses")} /></label>
+                  <label>
+                    Own account (optional)
+                    <input placeholder="e.g. research" value={form.sub} onChange={set("sub")} maxLength={32} />
+                  </label>
                 </div>
+                <p style={{ fontSize: 13, marginTop: 10, color: "var(--label)" }}>
+                  {form.sub.trim() ? (
+                    <>The agent gets its own NEAR account <code>{agentAccountOf(form, owner)}</code>, created with 0.1 NEAR for storage. Its key lives there, not on your account.</>
+                  ) : (
+                    <>Leave &quot;own account&quot; empty to put the agent&apos;s key on your account.</>
+                  )}{" "}
+                  {form.currency === "tUSD" && <>tUSD comes out of your token vault: deposit with <code>ft_transfer_call</code> on <code>{TUSD}</code>.</>}
+                  {form.currency === "ETH" && <>ETH payments are signed by NEAR Chain Signatures from an address derived for this rein; fund it on Base Sepolia.</>}
+                </p>
                 {plain && <Plain text={plain.text} source={plain.source} />}
                 <div className="row">
                   <button onClick={() => setStep(0)}>Back</button>
@@ -297,7 +333,8 @@ function Wizard({ owner, canWrite }: { owner: string; canWrite: boolean }) {
                 <h2>Create the rein</h2>
                 <p>
                   One approval in your wallet sends two transactions: <code>create_rein</code> to <code>{CONTRACT_ID}</code> (with{" "}
-                  {STORAGE_DEPOSIT_NEAR} NEAR for storage, the rest goes to your vault), and a new key on your own account that can
+                  {STORAGE_DEPOSIT_NEAR} NEAR for storage, the rest goes to your vault), and a new key on{" "}
+                  {agentAccountOf(form, owner) ? <>the new account <code>{agentAccountOf(form, owner)}</code></> : "your own account"} that can
                   only call {AGENT_METHODS.join(", ")}, with {AGENT_ALLOWANCE_NEAR} NEAR of gas allowance.
                 </p>
                 {reinId !== null && <p className="ok">Rein #{reinId} is on-chain.</p>}
@@ -320,13 +357,13 @@ function Wizard({ owner, canWrite }: { owner: string; canWrite: boolean }) {
               <>
                 <h2>The agent&apos;s key</h2>
                 {keyOn ? (
-                  <p className="ok">The key is on {pending?.owner} as a function-call key. It can&apos;t attach money, add keys or call anything else.</p>
+                  <p className="ok">The key is on {pending?.account} as a function-call key. It can&apos;t attach money, add keys or call anything else.</p>
                 ) : (
                   <p>The rein exists, but its key isn&apos;t on your account yet. Add it now.</p>
                 )}
                 {pending && <div className="secret" aria-label="Agent public key">{pending.publicKey}</div>}
                 <div className="row">
-                  {!keyOn && canWrite && (
+                  {!keyOn && canWrite && pending?.account === pending?.owner && (
                     <button className="primary" onClick={onAddKey} disabled={busy}>
                       {busy ? "Waiting for your wallet…" : "Add agent key"}
                     </button>
@@ -365,7 +402,7 @@ function Wizard({ owner, canWrite }: { owner: string; canWrite: boolean }) {
               <>
                 <h2>Test the key</h2>
                 <p>
-                  Ask the contract what it would do if this agent paid 0.01 NEAR to <code>{MERCHANT}</code>. It&apos;s a free view call; nothing moves.
+                  Ask the contract what it would do if this agent paid 0.01 {unit} to <code>{MERCHANT}</code>. It&apos;s a free view call; nothing moves.
                 </p>
                 <div className="row">
                   <button className="primary" onClick={onTest} disabled={busy}>
@@ -376,7 +413,7 @@ function Wizard({ owner, canWrite }: { owner: string; canWrite: boolean }) {
                   <Plain
                     text={
                       preview.ok
-                        ? `The contract would pay. ${near(preview.remaining)} NEAR left in this window; the vault holds ${near(preview.vault)} NEAR.`
+                        ? `The contract would pay. ${fromUnits(preview.remaining, form?.currency ?? "NEAR")} ${unit} left in this window.`
                         : preview.needs_approval
                           ? "The contract would ask you first: that amount is above your approval threshold."
                           : `The contract would refuse: ${preview.code?.replace(/_/g, " ")}.`
