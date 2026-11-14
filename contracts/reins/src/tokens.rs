@@ -26,7 +26,33 @@ pub(crate) fn ft_transfer(
 
 #[near]
 impl Reins {
-    /// NEP-141 receiver: credits the sender's token vault. Returns 0 (nothing refunded).
+    /// Opt in to holding `token` in your vault. Attach storage (0.01 NEAR is plenty; the
+    /// rest goes to your NEAR vault). Deposits of tokens you have not registered are refunded,
+    /// so nobody can make the contract pay storage for arbitrary (sender, token) pairs.
+    #[payable]
+    pub fn register_token(&mut self, token: AccountId) {
+        let before = self.usage();
+        let deposit = env::attached_deposit().as_yoctonear();
+        require!(
+            deposit >= 1,
+            "full_access_key_required: attach at least 1 yoctoNEAR"
+        );
+        let owner = env::predecessor_account_id();
+        let v = self.vault(&owner);
+        self.set_vault(&owner, v + deposit);
+        let k = token_key(&owner, &token);
+        if !self.token_vaults.contains_key(&k) {
+            self.token_vaults.insert(k, 0);
+        }
+        self.charge_storage(&owner, before);
+        emit(
+            "token_registered",
+            json!({ "owner": owner, "token": token }),
+        );
+    }
+
+    /// NEP-141 receiver: credits the sender's token vault if they registered this token,
+    /// otherwise refunds the whole amount. Writes no new state.
     pub fn ft_on_transfer(
         &mut self,
         sender_id: AccountId,
@@ -35,9 +61,12 @@ impl Reins {
     ) -> PromiseOrValue<U128> {
         let token = env::predecessor_account_id();
         require!(msg.is_empty(), "msg_must_be_empty");
-        let t = Some(token.clone());
-        let v = self.vault_in(&sender_id, &t);
-        self.set_vault_in(&sender_id, &t, v + amount.0);
+        require!(amount.0 > 0, "zero_amount");
+        let k = token_key(&sender_id, &token);
+        let Some(v) = self.token_vaults.get(&k).copied() else {
+            return PromiseOrValue::Value(amount);
+        };
+        self.token_vaults.insert(k, v + amount.0);
         emit(
             "token_deposit",
             json!({ "owner": sender_id, "token": token, "amount": amount, "vault": U128(v + amount.0) }),
