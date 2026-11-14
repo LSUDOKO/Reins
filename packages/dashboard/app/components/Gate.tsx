@@ -85,7 +85,7 @@ function SignIn({ onSignIn }: { onSignIn: () => void }) {
               <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "#b9d98a" }}>budget · cap · approvals</span>
             </div>
           </motion.div>
-          <SpinBadge className="gatebadge" text="Sign in • Set limits • Hand a key •" />
+          <SpinBadge className="gatebadge" text="Sign in • Hand a key •" />
         </div>
       </motion.div>
     </main>
