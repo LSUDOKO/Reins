@@ -292,13 +292,13 @@ export function Landing() {
           <motion.h2 variants={rise} {...inView} style={{ fontSize: "clamp(40px,7vw,92px)", lineHeight: 0.95 }}>
             <Brush>Give it a rein</Brush>
           </motion.h2>
-          <svg className="arc" viewBox="0 0 560 90" aria-hidden>
+          <svg className="arc" viewBox="0 0 600 100" aria-hidden>
             <defs>
-              <path id="arcp" d="M20 20 Q280 110 540 20" />
+              <path id="arcp" d="M10 18 Q300 120 590 18" />
             </defs>
             <text>
               <textPath href="#arcp" startOffset="50%" textAnchor="middle">
-                NEAR testnet • function-call keys • NEP-297 events
+                Function-call keys • NEP-297 events
               </textPath>
             </text>
           </svg>
