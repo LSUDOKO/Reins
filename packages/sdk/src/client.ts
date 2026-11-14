@@ -6,7 +6,7 @@ export const DEFAULTS = {
   network: "testnet",
   rpc: process.env.NEAR_RPC ?? "https://test.rpc.fastnear.com",
   archivalRpc: process.env.NEAR_ARCHIVAL_RPC ?? "https://archival-rpc.testnet.near.org",
-  contractId: process.env.REINS_CONTRACT ?? "reins-demo.testnet",
+  contractId: process.env.REINS_CONTRACT ?? "reins-near.testnet",
   nearblocks: process.env.NEARBLOCKS_API ?? "https://api-testnet.nearblocks.io",
 };
 
@@ -34,6 +34,9 @@ export class ReinsClient {
   isBlocked(owner: string, receiver: string) { return this.view<boolean>("is_blocked", { owner, receiver }); }
   pairCount(owner: string, receiver: string) { return this.view<number>("pair_count", { owner, receiver }); }
   stats() { return this.view<Stats>("stats"); }
+  tokenVaultOf(owner: string, token: string) { return this.view<string>("token_vault_of", { owner, token }); }
+  mpcContract() { return this.view<string>("mpc_contract"); }
+  evmPath(rein_id: number) { return this.view<string>("evm_path", { rein_id }); }
   version() { return this.view<string>("version"); }
 
   /**

@@ -10,11 +10,17 @@ export interface Terms {
   expires_at?: string | null;
   max_uses?: number | null;
   merchants?: string[] | null;
+  /** NEP-141 token the budget is in; null = NEAR. */
+  token?: string | null;
+  /** EVM chain id for Chain Signatures reins (amounts in wei). */
+  evm_chain_id?: string | null;
 }
 
 export interface Rein {
   id: number;
   owner: string;
+  /** Account holding the agent key: the owner or a named sub-account of it. */
+  agent_account: string;
   agent_key: string;
   label: string;
   parent: number | null;
@@ -27,6 +33,7 @@ export interface Rein {
   total_spent: string;
   created_at: string;
   pending_requests: number;
+  evm_nonce: string;
 }
 
 export interface PayRequest {
@@ -63,7 +70,8 @@ export interface Stats {
   requests: number;
   payments: number;
   volume: string;
+  evm_signatures: number;
 }
 
 /** The only methods an agent key is ever granted. */
-export const AGENT_METHODS = ["pay", "request_approval", "issue_subrein"] as const;
+export const AGENT_METHODS = ["pay", "pay_evm", "request_approval", "issue_subrein"] as const;

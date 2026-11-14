@@ -7,3 +7,4 @@ export * from "./owner";
 export * from "./agent";
 export * from "./tx";
 export * from "./screen";
+export * from "./evm";
