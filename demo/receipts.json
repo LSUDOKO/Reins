@@ -1,0 +1,32 @@
+[
+  {
+    "label": "demo: guarded payment",
+    "txHash": "6B27MivakyDTfWqQGtkYbyADxkV9oVEpSQjmDLHG5iLa",
+    "signer": "reins-demo-owner.testnet",
+    "expect": "payment"
+  },
+  {
+    "label": "demo: approval request",
+    "txHash": "8dScJrANcbkHQCeZE8vEnDKKgRDywUG8Cz5F1CxAWDAx",
+    "signer": "reins-demo-owner.testnet",
+    "expect": "approval_requested"
+  },
+  {
+    "label": "demo: owner-approved payment",
+    "txHash": "5YUV7csnZCCiWTmLbW8BXoZSDYKThc9ud9EdoszSMt3a",
+    "signer": "reins-demo-owner.testnet",
+    "expect": "payment"
+  },
+  {
+    "label": "demo: agent-issued sub-rein",
+    "txHash": "J9G5WmFTH8MP9GeDhZXmf29xoihZWwadroVytZo22kpJ",
+    "signer": "reins-demo-owner.testnet",
+    "expect": "rein_created"
+  },
+  {
+    "label": "demo: sub-agent payment",
+    "txHash": "7UGeGXBxA2QMAkiABzubyfz7538Jb21DnxywQL9dUhxa",
+    "signer": "reins-demo-owner.testnet",
+    "expect": "payment"
+  }
+]

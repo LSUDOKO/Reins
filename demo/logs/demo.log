@@ -1,0 +1,39 @@
+# demo run at 2026-11-14T11:57:41.580Z on reins-demo.testnet
+contract reins-demo.testnet v0.1.0, owner reins-demo-owner.testnet
+
+1. vault holds 1.92 NEAR
+
+2. rein #2: 0.5 NEAR/day, 0.2 per payment, owner approval above 0.1
+   agent key ed25519:DQRqVjahrqsNmCY393gp4zrNpsHnVWyYCCdNAZo8Rr5u added to reins-demo-owner.testnet as a function-call key
+   allowed methods: pay, request_approval, issue_subrein on reins-demo.testnet; gas allowance 0.25 NEAR
+
+3. agent pays 0.05 NEAR to reins-demo-shop.testnet through guardedPay
+  human asked (verdict warn):
+    [warn] age: account is 0.0 days old
+    [info] history: 1 prior payment(s) from this owner
+  human: approve
+   -> paid https://testnet.nearblocks.io/txns/6B27MivakyDTfWqQGtkYbyADxkV9oVEpSQjmDLHG5iLa
+
+4. agent wants to pay 0.15 NEAR (above the 0.1 threshold)
+   -> pending_approval https://testnet.nearblocks.io/txns/8dScJrANcbkHQCeZE8vEnDKKgRDywUG8Cz5F1CxAWDAx
+   pending for owner: [{"id":1,"amount":"0.15"}]
+   owner approves request #1 with a full-access key -> paid https://testnet.nearblocks.io/txns/5YUV7csnZCCiWTmLbW8BXoZSDYKThc9ud9EdoszSMt3a
+
+5. agent tries 0.3 NEAR (cap is 0.2)
+   -> refused by contract: over_per_tx_cap
+
+6. agent issues a sub-rein (0.1 NEAR/day) for a sub-agent
+   sub-rein #3 registered https://testnet.nearblocks.io/txns/J9G5WmFTH8MP9GeDhZXmf29xoihZWwadroVytZo22kpJ
+   sub-agent pays before the owner added its key -> rejected by the network (key not on the account)
+   owner adds the key; sub-agent pays 0.02 -> paid https://testnet.nearblocks.io/txns/7UGeGXBxA2QMAkiABzubyfz7538Jb21DnxywQL9dUhxa
+   parent rein spent today: 0.22 NEAR (sub-agent spending counts against it)
+
+7. owner freezes rein #2; agent pays 0.01 -> refused: rein_not_active
+   owner unfreezes it
+
+final: rein #2 spent 0.22 / 0.5 NEAR today, 3 payments; stats {
+  "reins": 3,
+  "requests": 1,
+  "payments": 4,
+  "volume": "320000000000000000000000"
+}
