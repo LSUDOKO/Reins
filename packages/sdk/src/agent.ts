@@ -13,50 +13,18 @@ import { ReinsClient } from "./client";
 import type { Assessment } from "./policy";
 import type { Preview, Rein, Terms } from "./types";
 import { toYocto } from "./units";
+import { sendCall, type TxResult } from "./tx";
 
-const GAS = "60000000000000"; // 60 Tgas: pay + transfer + callback
+export { panicOf, parseEvents, type ChainEvent, type TxResult } from "./tx";
 
-export interface ChainEvent {
-  standard: string;
-  event: string;
-  data: any[];
-}
-
-export interface TxResult {
-  txHash: string;
-  events: ChainEvent[];
-  /** Panic message when the transaction failed, e.g. "over_budget". */
-  error?: string;
-}
+const GAS = 60_000_000_000_000n; // 60 Tgas: pay + transfer + callback
 
 export type PayOutcome =
   | { status: "paid"; assessment: Assessment; preview: Preview; tx: TxResult }
   | { status: "transfer_failed"; assessment: Assessment; preview: Preview; tx: TxResult }
-  | { status: "refused"; by: "guard" | "contract"; code: string; assessment: Assessment; preview?: Preview }
+  | { status: "refused"; by: "guard" | "contract"; code: string; assessment: Assessment; preview?: Preview; tx?: TxResult }
   | { status: "pending_approval"; requestId: number; assessment: Assessment; preview: Preview; tx: TxResult }
   | { status: "declined_by_human"; assessment: Assessment; preview: Preview };
-
-export function parseEvents(res: any): ChainEvent[] {
-  const logs: string[] = [
-    ...(res?.transaction_outcome?.outcome?.logs ?? []),
-    ...(res?.receipts_outcome ?? []).flatMap((r: any) => r.outcome?.logs ?? []),
-  ];
-  return logs
-    .filter((l) => l.startsWith("EVENT_JSON:"))
-    .map((l) => JSON.parse(l.slice("EVENT_JSON:".length)))
-    .filter((e) => e.standard === "reins");
-}
-
-export function panicOf(res: any): string | undefined {
-  const outcomes = [res?.transaction_outcome, ...(res?.receipts_outcome ?? [])];
-  for (const o of outcomes) {
-    const f = o?.outcome?.status?.Failure;
-    if (!f) continue;
-    const msg = f?.ActionError?.kind?.FunctionCallError?.ExecutionError ?? JSON.stringify(f);
-    return String(msg).replace(/^Smart contract panicked: /, "");
-  }
-  return undefined;
-}
 
 export class AgentClient {
   readonly account: Account;
@@ -70,15 +38,8 @@ export class AgentClient {
     this.reins = reins ?? new ReinsClient(contractId);
   }
 
-  private async send(methodName: string, args: Record<string, unknown>): Promise<TxResult> {
-    try {
-      const res: any = await this.account.callFunctionRaw({ contractId: this.contractId, methodName, args, gas: GAS, deposit: "0" });
-      return { txHash: res?.transaction?.hash ?? res?.transaction_outcome?.id, events: parseEvents(res), error: panicOf(res) };
-    } catch (e: any) {
-      const msg = String(e?.message ?? e);
-      const code = msg.match(/panicked: ([a-z_]+)/)?.[1] ?? msg.match(/"([a-z_]{6,})"/)?.[1] ?? msg;
-      return { txHash: e?.context?.transactionHash ?? "", events: [], error: code };
-    }
+  private send(methodName: string, args: Record<string, unknown>): Promise<TxResult> {
+    return sendCall(this.account, this.contractId, methodName, args, GAS, 0n);
   }
 
   rein(): Promise<Rein | null> {
@@ -134,7 +95,7 @@ export class AgentClient {
       if (!yes) return { status: "declined_by_human", assessment, preview };
     }
     const tx = await this.rawPay(p.receiver, p.amountNear, p.memo);
-    if (tx.error) return { status: "refused", by: "contract", code: tx.error, assessment, preview };
+    if (tx.error) return { status: "refused", by: "contract", code: tx.error, assessment, preview, tx };
     const paid = tx.events.some((e) => e.event === "payment");
     return { status: paid ? "paid" : "transfer_failed", assessment, preview, tx };
   }
