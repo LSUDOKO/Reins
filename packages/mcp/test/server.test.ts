@@ -11,7 +11,7 @@ test("server exposes the agent tools and nothing that moves owner funds", async 
   const client = new Client({ name: "test", version: "0" });
   await Promise.all([server.connect(a), client.connect(b)]);
   const names = (await client.listTools()).tools.map((t) => t.name).sort();
-  expect(names).toEqual(["approval_status", "check_counterparty", "issue_subrein", "pay", "preview_payment", "quote_cross_chain", "rein_status"]);
+  expect(names).toEqual(["approval_status", "check_counterparty", "issue_subrein", "pay", "preview_payment", "quote_cross_chain", "rein_status", "screen_text"]);
   expect(names.some((n) => /withdraw|approve_request|set_allow|freeze/.test(n))).toBe(false);
 });
 
