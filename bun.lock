@@ -14,6 +14,13 @@
         "typescript": "^7.0.2",
       },
     },
+    "packages/api": {
+      "name": "@reins/api",
+      "version": "0.1.0",
+      "dependencies": {
+        "@reins/sdk": "workspace:*",
+      },
+    },
     "packages/dashboard": {
       "name": "@reins/dashboard",
       "version": "0.1.0",
@@ -167,6 +174,8 @@
     "@noble/hashes": ["@noble/hashes@2.4.0", "", {}, "sha512-X5XaVWZIBCT7HHZGm5I7ZQXDwLG+bGXuSrMQAW+7Zvl87h1kmc1ZB1VSRJcpUfoUrGQp4Fkoxm5kZ+Ms+aW+eA=="],
 
     "@noble/post-quantum": ["@noble/post-quantum@0.7.1", "", { "dependencies": { "@noble/ciphers": "2.4.0", "@noble/curves": "2.4.0", "@noble/hashes": "2.4.0" } }, "sha512-+P9981IiAnVh+rmcubozzVwrEy3XsN/tMhTnvsjV9VDaYpOnNCqWqKo2FLWxbu92YHfjGIlE5XnW175UK+ln+Q=="],
+
+    "@reins/api": ["@reins/api@workspace:packages/api"],
 
     "@reins/dashboard": ["@reins/dashboard@workspace:packages/dashboard"],
 
