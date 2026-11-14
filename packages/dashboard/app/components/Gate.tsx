@@ -39,11 +39,68 @@ export function SignInGate({ children }: { children: React.ReactNode }) {
   return <SignIn onSignIn={wallet.signIn} />;
 }
 
+/**
+ * Testnet demo sign-in: one click creates a faucet-funded testnet account whose key stays in
+ * this tab, or paste an existing testnet account + key (e.g. from ~/.near-credentials).
+ */
+function DemoSignIn() {
+  const wallet = useWallet();
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+  const [acct, setAcct] = useState("");
+  const [key, setKey] = useState("");
+  const create = async () => {
+    setBusy(true);
+    setErr(null);
+    try {
+      await wallet.signInDemo();
+    } catch (e) {
+      setErr(String((e as Error).message ?? e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="demo-signin" style={{ marginTop: 14, display: "grid", gap: 10 }}>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+        <button className="abtn" style={{ height: 46 }} onClick={create} disabled={busy} data-testid="demo-account">
+          {busy ? "Creating testnet account…" : "Create a testnet demo account"}
+        </button>
+        <button className="ghost" style={{ height: 46 }} onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+          Use a testnet key
+        </button>
+      </div>
+      {open && (
+        <form
+          style={{ display: "grid", gap: 8, maxWidth: 460 }}
+          onSubmit={(e) => {
+            e.preventDefault();
+            try {
+              wallet.signInWithKey(acct, key);
+            } catch {
+              setErr("That does not look like an ed25519:… secret key.");
+            }
+          }}
+        >
+          <input aria-label="Testnet account" placeholder="you.testnet" value={acct} onChange={(e) => setAcct(e.target.value)} autoComplete="off" />
+          <input aria-label="Secret key" placeholder="ed25519:… (testnet only, stays in this tab)" value={key} onChange={(e) => setKey(e.target.value)} type="password" autoComplete="off" />
+          <button className="primary" style={{ height: 44 }} disabled={!acct || !key}>Sign in with key</button>
+        </form>
+      )}
+      {err && <p role="alert" style={{ color: "var(--bad, #a3271f)", margin: 0, fontSize: 13 }}>{err}</p>}
+      <p style={{ margin: 0, fontSize: 12.5, opacity: 0.75 }}>
+        Testnet only. The demo account&apos;s key lives in this browser tab and is gone when you close it.
+      </p>
+    </div>
+  );
+}
+
 function SignIn({ onSignIn }: { onSignIn: () => void }) {
   const facts = [
     { i: <DKey size={22} />, t: "Your wallet signs every owner action. Reins never sees a key of yours." },
     { i: <DShield size={22} />, t: "Agents get a separate key that can only call three methods and can't attach money." },
-    { i: <DAgent size={22} />, t: "Works with MyNearWallet, HOT, Intear, HERE and Sender on testnet." },
+    { i: <DAgent size={22} />, t: "Use HOT, Intear, HERE or Sender on testnet, or create a one-click testnet demo account." },
   ];
   return (
     <main className="gate">
@@ -72,8 +129,9 @@ function SignIn({ onSignIn }: { onSignIn: () => void }) {
               Back home
             </Link>
           </div>
+          <DemoSignIn />
           <p className="demo">
-            No testnet wallet? <a href="?demo=1">Look around the demo owner</a> ({DEMO_OWNER}) read-only.
+            Just looking? <a href="?demo=1">Look around the demo owner</a> ({DEMO_OWNER}) read-only.
           </p>
         </div>
         <div className="gr" aria-hidden>
