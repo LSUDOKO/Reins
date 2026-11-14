@@ -3,7 +3,10 @@
 **Spending limits for AI agents on NEAR. The agent holds a function-call key; the contract holds the rules.**
 
 Built at NEAR HACKATHON (Nov 2026). Tracks: **AI Security & Defense** (`security`), **Agent Economy** (`agents`).
-Contract live on testnet: [`reins-demo.testnet`](https://testnet.nearblocks.io/address/reins-demo.testnet).
+Contract live on testnet: [`reins-demo.testnet`](https://testnet.nearblocks.io/address/reins-demo.testnet) ·
+Console: [lsudoko.github.io/Reins](https://lsudoko.github.io/Reins/) (read-only without a wallet; sign in with a NEAR testnet wallet to manage your own reins).
+
+![Reins console](docs/screenshots/dashboard-app.png)
 
 ---
 
@@ -163,6 +166,24 @@ claude mcp add reins -e REINS_OWNER=you.testnet -e REINS_AGENT_KEY=ed25519:... -
 
 There are deliberately no tools for withdraw, approve, freeze or allow. Recorded run: [`demo/logs/mcp-smoke.log`](demo/logs/mcp-smoke.log)
 (blocked receiver refused; young merchant → elicitation → approved → paid).
+
+## Web console
+
+`packages/dashboard` (Next.js static export, NEAR Wallet Selector). Build: `bun run --cwd packages/dashboard build`.
+
+| Page | What it shows / does |
+| --- | --- |
+| `/app` | any owner's reins (default: the demo owner), vault, spend bars, sub-reins; signed in: create rein (two wallet txs: `create_rein`, then AddKey with agent-only methods), freeze, revoke, revoke-all |
+| `/rein?id=N` | one rein: terms, spending, sub-reins, activity |
+| `/guard` | contract stats, counterparty check with blocklist evidence, the rule order, recorded transactions |
+| `/settings` | deposit / withdraw, pending approvals, blocklist overrides, each agent key's gas allowance |
+| `/connect` | MCP install command for a rein and the key's limits |
+| `/shop` | demo merchant: pays through a rein, or runs `preview_pay` with only a public key |
+| `/docs` | rules, error codes, MCP tools, events |
+
+Wallet-signed writes are wired to the same contract methods the CLI uses; the CLI and scripts are the tested path.
+
+![Guard console](docs/screenshots/dashboard-guard.png)
 
 ## Owner CLI
 
