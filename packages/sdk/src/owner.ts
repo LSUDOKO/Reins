@@ -2,11 +2,11 @@
  * Owner side: signs with a FULL-ACCESS key of the owner account. Every contract call here
  * attaches at least 1 yoctoNEAR, which an agent's function-call key cannot do.
  */
-import { Account, KeyPair, KeyPairSigner, type JsonRpcProvider } from "near-api-js";
+import { Account, KeyPair, KeyPairSigner, type JsonRpcProvider, type SerializedReturnValue } from "near-api-js";
 import type { KeyPairString } from "near-api-js";
 import { AGENT_METHODS, type Terms } from "./types";
 import { toYocto } from "./units";
-import { panicOf, parseEvents, type TxResult } from "./agent";
+import { sendCall, type TxResult } from "./tx";
 
 const GAS = "100000000000000"; // 100 Tgas
 const ONE_YOCTO = "1";
@@ -25,19 +25,13 @@ export class OwnerClient {
     this.account = new Account(ownerId, provider, new KeyPairSigner(KeyPair.fromString(secretKey)));
   }
 
-  private call<T>(methodName: string, args: Record<string, unknown>, deposit = ONE_YOCTO) {
+  private call<T extends SerializedReturnValue>(methodName: string, args: Record<string, unknown>, deposit = ONE_YOCTO) {
     return this.account.callFunction<T>({ contractId: this.contractId, methodName, args, deposit, gas: GAS });
   }
 
   /** Same as the typed methods, but returns the tx hash, NEP-297 events and any panic code. */
-  async raw(methodName: string, args: Record<string, unknown>, deposit = ONE_YOCTO): Promise<TxResult> {
-    try {
-      const res: any = await this.account.callFunctionRaw({ contractId: this.contractId, methodName, args, deposit, gas: GAS });
-      return { txHash: res?.transaction?.hash ?? res?.transaction_outcome?.id, events: parseEvents(res), error: panicOf(res) };
-    } catch (e: any) {
-      const msg = String(e?.message ?? e);
-      return { txHash: "", events: [], error: msg.match(/panicked: ([a-z_]+)/)?.[1] ?? msg };
-    }
+  raw(methodName: string, args: Record<string, unknown>, deposit = ONE_YOCTO): Promise<TxResult> {
+    return sendCall(this.account, this.contractId, methodName, args, BigInt(GAS), BigInt(deposit));
   }
 
   deposit(near: string) { return this.call<string>("deposit", {}, toYocto(near)); }
