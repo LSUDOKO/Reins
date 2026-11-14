@@ -10,7 +10,11 @@
     "test:contract": "cargo test -p reins",
     "verify": "bun run scripts/verify.ts",
     "demo": "bun run scripts/demo.ts",
-    "attack": "bun run scripts/attack.ts"
+    "attack": "bun run scripts/attack.ts",
+    "reins": "bun run scripts/reins.ts",
+    "mcp": "bun run packages/mcp/src/index.ts",
+    "mcp:smoke": "bun run scripts/mcp-smoke.ts",
+    "typecheck": "tsc -p ."
   },
   "dependencies": {
     "@reins/sdk": "workspace:*",
