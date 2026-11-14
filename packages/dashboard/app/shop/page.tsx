@@ -8,7 +8,7 @@
 // preview_pay dry run and moves nothing.
 
 import { useEffect, useState } from "react";
-import { JsonRpcProvider, KeyPair, type KeyPairString } from "near-api-js";
+import { JsonRpcProvider, type KeyPairString } from "near-api-js";
 import { AgentClient, type Preview } from "@reins/sdk";
 import { reins } from "@/lib/api";
 import { CONTRACT_ID, DEMO_OWNER, RPC_URL, txUrl } from "@/lib/chain";
@@ -65,23 +65,12 @@ export default function ShopPage() {
         const paid = tx.events.some((e) => e.event === "payment");
         setResult(paid ? { kind: "paid", tx: tx.txHash } : { kind: "refused", reason: tx.error ?? "transfer failed", tx: tx.txHash || undefined });
       } else {
-        const pk = key.trim() ? KeyPair.fromString(key.trim() as KeyPairString).getPublicKey().toString() : "";
-        const preview = await reins.previewPay(owner.trim(), pk || key.trim(), MERCHANT, nearToYocto(picked.price).toString());
+        // a public key: the free dry run, nothing signed
+        const preview = await reins.previewPay(owner.trim(), key.trim(), MERCHANT, nearToYocto(picked.price).toString());
         setResult({ kind: "preview", preview });
       }
     } catch (e) {
-      // a public key is not a KeyPair: preview with it directly
-      if (picked && key.trim().startsWith("ed25519:") && !isSecret) {
-        try {
-          const preview = await reins.previewPay(owner.trim(), key.trim(), MERCHANT, nearToYocto(picked.price).toString());
-          setResult({ kind: "preview", preview });
-          return;
-        } catch (e2) {
-          setPayErr(e2 instanceof Error ? e2.message : String(e2));
-        }
-      } else {
-        setPayErr(e instanceof Error ? e.message : String(e));
-      }
+      setPayErr(e instanceof Error ? e.message : String(e));
     } finally {
       setPaying(false);
     }
