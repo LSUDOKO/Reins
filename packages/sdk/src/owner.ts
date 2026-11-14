@@ -6,6 +6,7 @@ import { Account, KeyPair, KeyPairSigner, type JsonRpcProvider } from "near-api-
 import type { KeyPairString } from "near-api-js";
 import { AGENT_METHODS, type Terms } from "./types";
 import { toYocto } from "./units";
+import { panicOf, parseEvents, type TxResult } from "./agent";
 
 const GAS = "100000000000000"; // 100 Tgas
 const ONE_YOCTO = "1";
@@ -26,6 +27,17 @@ export class OwnerClient {
 
   private call<T>(methodName: string, args: Record<string, unknown>, deposit = ONE_YOCTO) {
     return this.account.callFunction<T>({ contractId: this.contractId, methodName, args, deposit, gas: GAS });
+  }
+
+  /** Same as the typed methods, but returns the tx hash, NEP-297 events and any panic code. */
+  async raw(methodName: string, args: Record<string, unknown>, deposit = ONE_YOCTO): Promise<TxResult> {
+    try {
+      const res: any = await this.account.callFunctionRaw({ contractId: this.contractId, methodName, args, deposit, gas: GAS });
+      return { txHash: res?.transaction?.hash ?? res?.transaction_outcome?.id, events: parseEvents(res), error: panicOf(res) };
+    } catch (e: any) {
+      const msg = String(e?.message ?? e);
+      return { txHash: "", events: [], error: msg.match(/panicked: ([a-z_]+)/)?.[1] ?? msg };
+    }
   }
 
   deposit(near: string) { return this.call<string>("deposit", {}, toYocto(near)); }
