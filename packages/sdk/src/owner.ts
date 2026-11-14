@@ -2,7 +2,7 @@
  * Owner side: signs with a FULL-ACCESS key of the owner account. Every contract call here
  * attaches at least 1 yoctoNEAR, which an agent's function-call key cannot do.
  */
-import { Account, KeyPair, KeyPairSigner, type JsonRpcProvider, type SerializedReturnValue } from "near-api-js";
+import { Account, KeyPair, KeyPairSigner, PublicKey, actions, type JsonRpcProvider, type SerializedReturnValue } from "near-api-js";
 import type { KeyPairString } from "near-api-js";
 import { AGENT_METHODS, type Terms } from "./types";
 import { toYocto } from "./units";
@@ -13,6 +13,8 @@ const ONE_YOCTO = "1";
 
 export interface Grant {
   reinId: number;
+  /** Account that holds the agent key (the owner, or the named sub-account created for it). */
+  agentAccount: string;
   publicKey: string;
   /** The agent's secret. Hand it to the agent's environment; never commit it. */
   secretKey: KeyPairString;
@@ -44,15 +46,34 @@ export class OwnerClient {
    *    only `pay`, `request_approval` and `issue_subrein` on this contract, with a gas
    *    allowance (default 0.25 NEAR).
    */
-  async grantRein(label: string, terms: Terms, opts: { allowanceNear?: string; storageNear?: string; parent?: number } = {}): Promise<Grant> {
+  async grantRein(label: string, terms: Terms, opts: { allowanceNear?: string; storageNear?: string; parent?: number; subAccount?: string } = {}): Promise<Grant> {
     const kp = KeyPair.fromRandom("ed25519");
     const publicKey = kp.getPublicKey().toString();
     const storage = toYocto(opts.storageNear ?? "0.02");
+    const agentAccount = opts.subAccount ? `${opts.subAccount}.${this.ownerId}` : this.ownerId;
+    const agent_account = opts.subAccount ? agentAccount : null;
     const reinId = opts.parent === undefined
-      ? await this.call<number>("create_rein", { agent_key: publicKey, label, terms }, storage)
-      : await this.call<number>("create_subrein", { parent: opts.parent, agent_key: publicKey, label, terms }, storage);
-    await this.addAgentKey(publicKey, opts.allowanceNear);
-    return { reinId, publicKey, secretKey: kp.toString() as KeyPairString };
+      ? await this.call<number>("create_rein", { agent_key: publicKey, label, terms, agent_account }, storage)
+      : await this.call<number>("create_subrein", { parent: opts.parent, agent_key: publicKey, label, terms, agent_account }, storage);
+    if (opts.subAccount) await this.createAgentAccount(agentAccount, publicKey, opts.allowanceNear);
+    else await this.addAgentKey(publicKey, opts.allowanceNear);
+    return { reinId, agentAccount, publicKey, secretKey: kp.toString() as KeyPairString };
+  }
+
+  /**
+   * Create a named sub-account (e.g. `research.you.testnet`) whose ONLY key is the agent's
+   * function-call key for this contract. The agent gets its own on-chain identity and the
+   * owner's account carries no agent keys at all. 0.01 NEAR covers the account's storage.
+   */
+  createAgentAccount(accountId: string, publicKey: string, allowanceNear = "0.25") {
+    return this.account.signAndSendTransaction({
+      receiverId: accountId,
+      actions: [
+        actions.createAccount(),
+        actions.transfer(BigInt(toYocto("0.01"))),
+        actions.addFunctionCallAccessKey(PublicKey.fromString(publicKey), this.contractId, [...AGENT_METHODS], BigInt(toYocto(allowanceNear))),
+      ],
+    });
   }
 
   /** Activate a sub-agent key that an agent registered with `issue_subrein`. */
