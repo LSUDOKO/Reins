@@ -16,9 +16,11 @@ use near_sdk::{env, near, AccountId, NearToken, PanicOnDefault, PublicKey};
 
 mod agent;
 mod errors;
+mod evm;
 mod events;
 mod guard;
 mod owner;
+mod tokens;
 mod types;
 mod views;
 
@@ -58,16 +60,22 @@ pub struct Reins {
     allow_overrides: LookupMap<String, bool>,
     /// `owner|receiver` -> settled payments, the "prior interactions" signal.
     pair_count: LookupMap<String, u32>,
+    /// `owner|token` -> spendable token units (NEP-141 budgets).
+    token_vaults: LookupMap<String, u128>,
+    /// Chain Signatures MPC contract that signs cross-chain payments.
+    mpc: AccountId,
     next_rein: ReinId,
     next_request: RequestId,
     payments: u64,
     volume: u128,
+    evm_signatures: u64,
 }
 
 #[near]
 impl Reins {
+    /// `mpc` defaults to the testnet Chain Signatures signer `v1.signer-prod.testnet`.
     #[init]
-    pub fn new() -> Self {
+    pub fn new(mpc: Option<AccountId>) -> Self {
         Self {
             reins: LookupMap::new(b"r"),
             key_index: LookupMap::new(b"k"),
@@ -78,18 +86,26 @@ impl Reins {
             reports: LookupMap::new(b"b"),
             allow_overrides: LookupMap::new(b"a"),
             pair_count: LookupMap::new(b"p"),
+            token_vaults: LookupMap::new(b"t"),
+            mpc: mpc.unwrap_or_else(|| "v1.signer-prod.testnet".parse().unwrap()),
             next_rein: 1,
             next_request: 1,
             payments: 0,
             volume: 0,
+            evm_signatures: 0,
         }
     }
 }
 
 // ---- shared helpers -------------------------------------------------------------------
 
-pub(crate) fn key_of(owner: &AccountId, pk: &PublicKey) -> String {
-    format!("{}|{}", owner, String::from(pk))
+/// Index key of an agent key: the account that holds the key plus the key itself.
+pub(crate) fn key_of(holder: &AccountId, pk: &PublicKey) -> String {
+    format!("{}|{}", holder, String::from(pk))
+}
+
+pub(crate) fn token_key(owner: &AccountId, token: &AccountId) -> String {
+    format!("{owner}|{token}")
 }
 
 pub(crate) fn pair_of(owner: &AccountId, receiver: &AccountId) -> String {
@@ -150,6 +166,23 @@ impl Reins {
         self.vaults.insert(owner.clone(), v);
     }
 
+    /// Vault balance in the rein's denomination: NEAR, or a NEP-141 token.
+    pub(crate) fn vault_in(&self, owner: &AccountId, token: &Option<AccountId>) -> u128 {
+        match token {
+            None => self.vault(owner),
+            Some(t) => self.token_vaults.get(&token_key(owner, t)).copied().unwrap_or(0),
+        }
+    }
+
+    pub(crate) fn set_vault_in(&mut self, owner: &AccountId, token: &Option<AccountId>, v: u128) {
+        match token {
+            None => self.set_vault(owner, v),
+            Some(t) => {
+                self.token_vaults.insert(token_key(owner, t), v);
+            }
+        }
+    }
+
     /// Write pending collection changes so `env::storage_usage` reflects them.
     pub(crate) fn flush(&mut self) {
         self.reins.flush();
@@ -161,6 +194,7 @@ impl Reins {
         self.reports.flush();
         self.allow_overrides.flush();
         self.pair_count.flush();
+        self.token_vaults.flush();
     }
 
     /// Storage in use, counting changes not yet written by the collections.
