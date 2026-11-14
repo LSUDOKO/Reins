@@ -1,9 +1,9 @@
 "use client";
 
-// The credential overlay: "Connect agent" opens a scrim + centered floating
-// panel (same language as the avatar menu) holding the card URL, the
-// per-harness install chips, and the claude.ai hint. The page never moves;
-// the card keeps its flip as pure object delight. Esc / scrim / ✕ close it.
+// The connect overlay: "Connect agent" opens a scrim + centered floating panel
+// (same language as the avatar menu) holding the rein's agent key and the
+// per-harness install chips for the Reins MCP server. The agent's SECRET key is
+// shown once, at creation; here it stays a placeholder. Esc / scrim / ✕ close it.
 // Mount/unmount rides AnimatePresence at the call site.
 
 import { useEffect } from "react";
@@ -14,15 +14,12 @@ import { IconClose } from "./ui";
 
 export function ConnectOverlay({
   card,
-  url,
-  onRotate,
-  rotating,
+  secret,
   onClose,
 }: {
   card: CardState;
-  url: string;
-  onRotate?: () => void;
-  rotating?: boolean;
+  /** only known right after creation; otherwise the snippets carry a placeholder */
+  secret?: string;
   onClose: () => void;
 }) {
   useEffect(() => {
@@ -65,17 +62,14 @@ export function ConnectOverlay({
             <IconClose />
           </button>
         </div>
-        <UrlBox url={url} testid="card-url" />
-        <ConnectChips url={url} cardName={card.name} />
+        <UrlBox url={secret ?? card.agent_key} testid="card-key" />
+        <ConnectChips owner={card.owner} secret={secret ?? "<agent secret shown at creation>"} cardName={card.name} />
         <div className="ovfoot">
           <p className="ovnote">
-            The URL is the credential · anyone holding it can spend within this card's terms · rotate it if it leaks
+            {secret
+              ? "This is the agent's secret key, shown once · it can only call pay, request_approval and issue_subrein, and cannot attach a deposit"
+              : "The public key above is bound to this rein · its secret was shown once when the rein was created · lost it? revoke and create a new rein"}
           </p>
-          {onRotate && (
-            <button className="ovrotate" onClick={onRotate} disabled={rotating} data-testid="rotate-url" title="Invalidate this URL and mint a new one">
-              {rotating ? "Rotating…" : "Rotate URL"}
-            </button>
-          )}
         </div>
       </motion.div>
     </motion.div>
