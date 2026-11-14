@@ -75,7 +75,7 @@ impl Reins {
         self.expire_stale(&owner, id, at);
         require!(self.rein(id).pending_requests < MAX_PENDING_PER_REIN, "too_many_pending_requests");
 
-        let before = env::storage_usage();
+        let before = self.usage();
         let rid = self.next_request;
         self.next_request += 1;
         self.requests.insert(rid, PayRequest {
@@ -106,7 +106,7 @@ impl Reins {
     pub fn issue_subrein(&mut self, agent_key: PublicKey, label: String, terms: Terms) -> ReinId {
         let parent = self.caller_rein();
         let owner = self.rein(parent).owner.clone();
-        let before = env::storage_usage();
+        let before = self.usage();
         let id = self.insert_rein(&owner, agent_key, label, terms, Some(parent));
         self.charge_storage(&owner, before);
         id
@@ -131,12 +131,12 @@ impl Reins {
                                            "amount": amount, "request_id": request }));
             return PromiseOrValue::Value(false);
         }
-        let before = env::storage_usage();
+        let before = self.usage();
         let k = pair_of(&owner, &receiver);
         let n = self.pair_count.get(&k).copied().unwrap_or(0) + 1;
         self.pair_count.insert(k, n);
         // Storage for the counter comes out of the vault; never fail a settled payment over it.
-        let used = u128::from(env::storage_usage().saturating_sub(before));
+        let used = u128::from(self.usage().saturating_sub(before));
         let cost = env::storage_byte_cost().as_yoctonear() * used;
         let v = self.vault(&owner);
         self.set_vault(&owner, v.saturating_sub(cost));

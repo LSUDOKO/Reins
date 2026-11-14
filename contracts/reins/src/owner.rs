@@ -162,7 +162,7 @@ impl Reins {
     #[payable]
     pub fn create_rein(&mut self, agent_key: PublicKey, label: String, terms: Terms) -> ReinId {
         let owner = full_access_owner(self);
-        let before = env::storage_usage();
+        let before = self.usage();
         let id = self.insert_rein(&owner, agent_key, label, terms, None);
         self.charge_storage(&owner, before);
         id
@@ -172,7 +172,7 @@ impl Reins {
     #[payable]
     pub fn create_subrein(&mut self, parent: ReinId, agent_key: PublicKey, label: String, terms: Terms) -> ReinId {
         let owner = full_access_owner(self);
-        let before = env::storage_usage();
+        let before = self.usage();
         let id = self.insert_rein(&owner, agent_key, label, terms, Some(parent));
         self.charge_storage(&owner, before);
         id
@@ -189,7 +189,7 @@ impl Reins {
             require!(terms.budget.0 <= p.terms.budget.0, "child_budget_above_parent");
             require!(terms.per_tx_cap.0 <= p.terms.per_tx_cap.0, "child_cap_above_parent");
         }
-        let before = env::storage_usage();
+        let before = self.usage();
         let r = self.reins.get_mut(&id).unwrap();
         require!(r.status != Status::Revoked, "rein_revoked");
         r.terms = terms.clone();
@@ -241,7 +241,7 @@ impl Reins {
     #[payable]
     pub fn set_allow(&mut self, receiver: AccountId, allowed: bool) {
         let owner = full_access_owner(self);
-        let before = env::storage_usage();
+        let before = self.usage();
         let k = pair_of(&owner, &receiver);
         if allowed {
             self.allow_overrides.insert(k, true);
@@ -292,7 +292,7 @@ impl Reins {
         require!(evidence_hash.len() == 64 && evidence_hash.chars().all(|c| c.is_ascii_hexdigit()),
                  "evidence_hash_must_be_sha256_hex");
         require!(!evidence_uri.is_empty() && evidence_uri.len() <= 256, "evidence_uri_size");
-        let before = env::storage_usage();
+        let before = self.usage();
         let list = self.reports.entry(account.clone()).or_default();
         require!(list.len() < MAX_REPORTS_PER_ACCOUNT, "too_many_reports");
         require!(!list.iter().any(|r| r.reporter == reporter), "already_reported");
@@ -303,7 +303,7 @@ impl Reins {
             bond: U128(0),
             created_at: u64s(now()),
         });
-        let used = u128::from(env::storage_usage().saturating_sub(before));
+        let used = u128::from(self.usage().saturating_sub(before));
         let storage = env::storage_byte_cost().as_yoctonear() * used;
         let bond = deposit.saturating_sub(storage);
         require!(bond >= REPORT_BOND.as_yoctonear(), "bond_too_small: attach 0.1 NEAR plus storage");

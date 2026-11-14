@@ -150,9 +150,28 @@ impl Reins {
         self.vaults.insert(owner.clone(), v);
     }
 
+    /// Write pending collection changes so `env::storage_usage` reflects them.
+    pub(crate) fn flush(&mut self) {
+        self.reins.flush();
+        self.key_index.flush();
+        self.owner_reins.flush();
+        self.vaults.flush();
+        self.requests.flush();
+        self.owner_requests.flush();
+        self.reports.flush();
+        self.allow_overrides.flush();
+        self.pair_count.flush();
+    }
+
+    /// Storage in use, counting changes not yet written by the collections.
+    pub(crate) fn usage(&mut self) -> u64 {
+        self.flush();
+        env::storage_usage()
+    }
+
     /// Charge the storage a call added since `before` to the owner's vault.
     pub(crate) fn charge_storage(&mut self, owner: &AccountId, before: u64) {
-        let after = env::storage_usage();
+        let after = self.usage();
         if after <= before {
             return;
         }
