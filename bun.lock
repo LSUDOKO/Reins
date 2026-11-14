@@ -4,6 +4,10 @@
   "workspaces": {
     "": {
       "name": "reins",
+      "dependencies": {
+        "@reins/sdk": "workspace:*",
+        "near-api-js": "^7.5.3",
+      },
     },
     "packages/sdk": {
       "name": "@reins/sdk",
