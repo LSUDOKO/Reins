@@ -40,13 +40,13 @@ const agent = new AgentClient(CFG.owner, grant.secretKey, provider, CFG.contract
 // 3. A normal payment through the guard -------------------------------------------------
 log(`\n3. agent pays 0.05 NEAR to ${CFG.merchant} through guardedPay`);
 const p1 = await agent.guardedPay({ receiver: CFG.merchant, amountNear: "0.05", memo: "api credits", askHuman: human });
-log(`   -> ${p1.status}`, "tx" in p1 ? link(p1.tx.txHash) : "");
+log(`   -> ${p1.status}`, "tx" in p1 && p1.tx ? link(p1.tx.txHash) : "");
 if (p1.status === "paid") record({ label: "demo: guarded payment", txHash: p1.tx.txHash, signer: CFG.owner, expect: "payment" });
 
 // 4. Above the approval threshold: the agent asks, the owner decides ---------------------
 log(`\n4. agent wants to pay 0.15 NEAR (above the 0.1 threshold)`);
 const p2 = await agent.guardedPay({ receiver: CFG.merchant, amountNear: "0.15", memo: "dataset", askHuman: human });
-log(`   -> ${p2.status}`, "tx" in p2 ? link(p2.tx.txHash) : "");
+log(`   -> ${p2.status}`, "tx" in p2 && p2.tx ? link(p2.tx.txHash) : "");
 if (p2.status === "pending_approval") {
   record({ label: "demo: approval request", txHash: p2.tx.txHash, signer: CFG.owner, expect: "approval_requested" });
   log(`   pending for owner: ${JSON.stringify((await reins.pendingRequestsOf(CFG.owner)).map((r) => ({ id: r.id, amount: fromYocto(r.amount) })))}`);
