@@ -66,6 +66,9 @@ export function Cockpit({
           <Link className={`navlink${here("/guard") ? " on" : ""}`} href="/guard">
             Guard
           </Link>
+          <Link className={`navlink${here("/connect") ? " on" : ""}`} href="/connect">
+            Connect
+          </Link>
           <Link className={`navlink${here("/settings") ? " on" : ""}`} href="/settings">
             Settings
           </Link>
