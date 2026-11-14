@@ -5,7 +5,7 @@
 // and center, the next card peeking out behind its right edge · the + at the
 // deck's edge issues) → the balance, big and centered → the gauge → one
 // whisper caption → the static verb row.
-// Below, the full-width paned zone: activity / delegation terms / sub-cards
+// Below, the full-width paned zone: activity / terms / sub-reins
 // behind a quiet segmented toggle. Card swaps animate ONLY the per-card
 // readings (name, money, caption, open pane) with a short in-place fade;
 // the verbs, tabs and carousel chrome never move.
@@ -537,7 +537,7 @@ function HeadBody({ card }: { card: CardState }) {
 }
 
 // ---------------------------------------------------------------------------
-// the bottom panes: activity / delegation terms / sub-cards, one at a time
+// the bottom panes: activity / terms / sub-reins, one at a time
 // ---------------------------------------------------------------------------
 
 function ActivityPane({ card, feed }: { card: CardState | null; feed: FeedRow[] }) {

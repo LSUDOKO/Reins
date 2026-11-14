@@ -5,7 +5,10 @@
   "scripts": {
     "dev": "next dev -p 4071",
     "build": "next build",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "receipts": "mkdir -p public && cp ../../demo/receipts.json public/receipts.json",
+    "predev": "bun run receipts",
+    "prebuild": "bun run receipts"
   },
   "dependencies": {
     "@near-wallet-selector/core": "^10.1.4",

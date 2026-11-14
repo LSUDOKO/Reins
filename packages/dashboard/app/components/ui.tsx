@@ -85,7 +85,7 @@ const easeOut = (t: number) => 1 - Math.pow(2, -10 * t);
 
 // The full odometer sweep plays once per session (the first dashboard entry) so the
 // daily driver stays calm afterwards; a "#demo" hash replays the full choreography
-// on every view for filming (hash, not ?query · Privy strips query params).
+// on every view for filming (a hash survives redirects, a query may not).
 let theaterDone = false;
 const demoMode = () => typeof window !== "undefined" && window.location.hash.includes("demo");
 const theaterActive = () => demoMode() || !theaterDone;
@@ -297,7 +297,7 @@ export function IconClose({ size = 14 }: { size?: number }) {
 }
 
 // ---------- dot-matrix chip ----------
-// Animated: the chip "ticks" like data moving through it · each beat one base
+// Animated: the chip "ticks" like data moving through it · each beat one step
 // dot rests while two transient dots light up. Deterministic per frame, slow,
 // and disabled under prefers-reduced-motion.
 

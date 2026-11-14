@@ -35,7 +35,7 @@ export function allowance(card: CardState) {
 }
 
 // ---------------------------------------------------------------------------
-// TermsGrid: the delegation term sheet (inside the foot accordion's sheet).
+// TermsGrid: the rein term sheet (inside the foot accordion's sheet).
 // Two grouped stacks of quiet rows · what the card can do (scope) left, how
 // long it lives and who holds it (lifecycle + enforcement) right. Values
 // humanized: "uncapped", "any merchant", "unlimited", real dates.

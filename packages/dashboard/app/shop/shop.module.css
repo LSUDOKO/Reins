@@ -1,7 +1,7 @@
-/* /shop: the demo merchant ("s0nder supply co."), riding the attestpay design
+/* /shop: the demo merchant ("s0nder data co."), riding the reins design
    system: same tokens, same pill buttons, same inset inputs, light + INK dark.
    A sibling storefront rather than a foreign one; the foot note says honestly
-   what it is (test-mode Visa, on-chain settlement). Buttons and inputs inherit
+   what it is (paid in NEAR through a rein). Buttons and inputs inherit
    the globals vocabulary; this module only does layout + shop surfaces. */
 
 .wrap {
@@ -127,7 +127,7 @@
 .foot a { color: var(--body); text-decoration: none; font-weight: 500; }
 .foot a:hover { color: var(--ink); }
 
-/* Tabs for toggling between s0nder supply co. and Stripe Marketplace */
+/* Tabs for toggling between storefronts */
 .tabs {
   display: flex;
   gap: 4px;

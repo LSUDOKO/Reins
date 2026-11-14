@@ -1,5 +1,5 @@
-// / — the public landing page. The dashboard lives at /app; the nav's primary
-// action reads "Sign in" or "Open dashboard" depending on the Privy session.
+// / — the public landing page. The console lives at /app.
+// The nav reads "Open the demo" or "Open dashboard" depending on the wallet session.
 
 import { Landing } from "./components/Landing";
 

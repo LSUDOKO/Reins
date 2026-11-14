@@ -1,4 +1,4 @@
-/* attestpay dashboard · the sketchbook edition.
+/* reins console · the sketchbook edition.
    A creative studio's moodboard on cream paper: one deep forest green carries
    90% of the interface (text, primary actions, borders), a school-bus yellow
    is the highlighter marker (never a CTA), and pastel sticky notes (mint, teal,
@@ -341,7 +341,7 @@ button:focus-visible, a:focus-visible {
   font-size: 14.5px; letter-spacing: 0.08em; color: var(--ink); display: flex; gap: 14px;
   font-variant-numeric: tabular-nums lining-nums; align-items: baseline;
 }
-/* the network brand on a fiat-linked card · quiet display voice, riding the PAN row's end */
+/* a brand mark riding the PAN row end · quiet display voice */
 .card .num .brandmark {
   margin-left: auto; font-family: var(--font-display), sans-serif; font-weight: 700;
   font-size: 13px; letter-spacing: 0; color: var(--ink); opacity: 0.85;
@@ -418,7 +418,7 @@ button:focus-visible, a:focus-visible {
 .railback:hover { color: var(--ink); border-color: var(--hairline-strong); }
 .railback svg { width: 14px; height: 14px; }
 .railfoot { margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: 16px; }
-/* the network mark: the Base roundel in chrome gray, at rest */
+/* the network mark in chrome gray, at rest */
 .net { display: grid; place-items: center; color: var(--label); transition: color 0.2s var(--ease); cursor: default; }
 .net:hover { color: var(--body); }
 .net svg { width: 15px; height: 15px; display: block; }
@@ -473,11 +473,11 @@ button.proitem.danger:hover { background: var(--danger-tint); }
 }
 .proballbl { font-size: 10.5px; color: var(--label); }
 /* the non-funding holdings: native ETH (gas) + WETH (the execute lane's swap
-   output) · a quiet secondary line under the USDC figure, tabular so they align */
+   output) · a quiet secondary line under the headline figure, tabular so they align */
 .proassets { display: flex; gap: 16px; padding: 0 10px 6px; }
 .proasset { display: inline-flex; align-items: baseline; gap: 4px; font-size: 10.5px; color: var(--label); }
 .proassetfig { font-size: 11.5px; color: var(--body); font-weight: 500; font-variant-numeric: tabular-nums; }
-/* the self-custody escape hatch: export the key through Privy's secure iframe */
+/* the self-custody escape hatch, styled as a quiet menu row */
 .proexport { margin-bottom: 2px; }
 button.proaddr {
   display: flex; align-items: center; gap: 8px; width: calc(100% - 12px); margin: 0 6px;
@@ -622,7 +622,7 @@ button.proaddr.done svg { color: var(--accent); }
 .a-rcpt a:hover { color: var(--ink); }
 .aempty { min-height: 96px; display: flex; align-items: center; justify-content: center; font-size: 12.5px; color: var(--label); }
 
-/* the delegation term sheet: quiet label/value rows */
+/* the rein term sheet: quiet label/value rows */
 .termsheet { display: grid; grid-template-columns: 1fr 1fr; column-gap: 40px; align-items: start; margin-top: 4px; }
 .tcol { min-width: 0; }
 .trow { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; padding: 9px 0; border-top: 1px solid var(--hairline-soft); min-width: 0; }
@@ -768,7 +768,7 @@ button.tourghost:hover { color: var(--ink); background: var(--float-hover); }
 .dtext:focus { outline: none; border-color: var(--hairline-strong); box-shadow: none; background: var(--inset); }
 .dtext:disabled { opacity: 0.55; }
 .drow { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
-/* venice at work: a thin determinate-looking pulse riding under the intent box */
+/* drafting at work: a thin determinate-looking pulse riding under the intent box */
 .draftbar { position: relative; height: 2px; margin-top: 10px; border-radius: 999px; background: var(--inset); overflow: hidden; }
 .draftbar i {
   position: absolute; top: 0; bottom: 0; width: 36%; border-radius: 999px;
@@ -873,7 +873,7 @@ button.tourghost:hover { color: var(--ink); background: var(--float-hover); }
 .lblchip .lk.protocol { background: var(--ink); }
 .lblchip .lk.verified_contract { background: var(--body); }
 .lblchip .lk.raw_address { background: var(--ghost); }
-/* venice's drafting notes: ONE panel, not loose strips · what the compiler
+/* the drafting notes: ONE panel, not loose strips · what the compiler
    adjusted or couldn't express, framed as a single voice */
 .vnotes {
   margin-top: 12px; text-align: left;
@@ -1104,7 +1104,7 @@ main.narrow .panel { padding: 20px; }
 .bootstuck p { font-size: 12px; color: var(--label); margin-bottom: 12px; }
 
 /* ---------- boot: the loading layer (wordmark + the seal drawing shut) ----------
-   The arc rides REAL gate progress (Privy init -> wallet -> probe); pathLength=1
+   The arc rides REAL gate progress (wallet init -> contract read); pathLength=1
    so stroke-dashoffset = 1 - progress. The core fills only when the seal closes:
    the same "live" seal a card wears, here earned by the app booting. */
 .boot {
@@ -1312,7 +1312,7 @@ main.narrow .panel { padding: 20px; }
 
 /* callout: an honesty note (simulated leg, real money) · a quiet contained box,
    no colored side bar · the icon carries the tone (neutral for info, amber for
-   a warning), same vocabulary as the composer's Venice notes */
+   a warning), same vocabulary as the composer drafting notes */
 .docnote {
   margin: 16px 0; display: flex; gap: 11px; padding: 13px 16px; border-radius: 8px;
   background: var(--tint); border: 1px solid var(--hairline);
@@ -1732,7 +1732,7 @@ button.avatarbtn:hover .avatar { box-shadow: 0 0 0 3px var(--yellow); }
   .navlinks { display: none; }
 }
 
-/* ---------- KeeperHub: the execution pane ---------- */
+/* ---------- the guard console pane ---------- */
 .khwrap { display: flex; flex-direction: column; gap: 16px; }
 .khpad { padding: 22px 24px; }
 .khhead { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }

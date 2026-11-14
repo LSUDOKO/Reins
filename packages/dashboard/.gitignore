@@ -1,2 +1,4 @@
-.vercel
-.env*.local
+.next
+out
+next-env.d.ts
+public/receipts.json
