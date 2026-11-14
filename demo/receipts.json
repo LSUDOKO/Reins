@@ -28,5 +28,25 @@
     "txHash": "7UGeGXBxA2QMAkiABzubyfz7538Jb21DnxywQL9dUhxa",
     "signer": "reins-demo-owner.testnet",
     "expect": "payment"
+  },
+  {
+    "label": "attack: blocked receiver",
+    "txHash": "H8jNcuKwmKzLCD3qHFfhQ41a8S7JAQE9Tijfdyt77k2S",
+    "signer": "reins-demo-owner.testnet",
+    "expect": "panic",
+    "code": "receiver_blocked"
+  },
+  {
+    "label": "attack: rollback on failed transfer",
+    "txHash": "8qAQ3jUcL8HCgNZVoATvjkuhCGmcMyMRs4V7JCLtNK3G",
+    "signer": "reins-demo-owner.testnet",
+    "expect": "payment_failed"
+  },
+  {
+    "label": "attack: over cap",
+    "txHash": "H5HCyT1c9TaCdZsiDjgmewEQmRpjT5uAJiv6neNQW1tj",
+    "signer": "reins-demo-owner.testnet",
+    "expect": "panic",
+    "code": "over_per_tx_cap"
   }
 ]
