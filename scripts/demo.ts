@@ -34,7 +34,7 @@ const grant = await owner.grantRein("research-agent", {
 });
 log(`\n2. rein #${grant.reinId}: 0.5 NEAR/day, 0.2 per payment, owner approval above 0.1`);
 log(`   agent key ${grant.publicKey} added to ${CFG.owner} as a function-call key`);
-log(`   allowed methods: pay, request_approval, issue_subrein on ${CFG.contract}; gas allowance 0.25 NEAR`);
+log(`   allowed methods: pay, pay_evm, request_approval, issue_subrein on ${CFG.contract}; gas allowance 0.25 NEAR`);
 const agent = new AgentClient(CFG.owner, grant.secretKey, provider, CFG.contract, reins);
 
 // 3. A normal payment through the guard -------------------------------------------------
@@ -86,6 +86,31 @@ const p5 = await agent.guardedPay({ receiver: CFG.merchant, amountNear: "0.01", 
 log(`\n7. owner freezes rein #${grant.reinId}; agent pays 0.01 -> ${p5.status}${p5.status === "refused" ? `: ${p5.code}` : ""}`);
 await owner.unfreeze(grant.reinId);
 log(`   owner unfreezes it`);
+
+// 8. Named sub-account agent: its own on-chain identity, no keys on the owner account ----
+const name = `a${Date.now().toString(36)}`;
+const subGrant = await owner.grantRein("named-agent", {
+  budget: toYocto("0.2"), period_secs: String(SECONDS.day), per_tx_cap: toYocto("0.05"),
+}, { subAccount: name, allowanceNear: "0.1" });
+log(`\n8. rein #${subGrant.reinId} held by its own account ${subGrant.agentAccount} (created with only the agent's function-call key)`);
+const named = new AgentClient(subGrant.agentAccount, subGrant.secretKey, provider, CFG.contract, reins);
+const p6 = await named.rawPay(CFG.merchant, "0.01", "named agent");
+log(`   ${subGrant.agentAccount} pays 0.01 NEAR from ${CFG.owner}'s vault ->`, p6.error ?? "paid", link(p6.txHash));
+if (!p6.error) record({ label: "demo: named sub-account agent payment", txHash: p6.txHash, signer: subGrant.agentAccount, expect: "payment" });
+
+// 9. Stablecoin budget: a rein in tUSD (NEP-141), funded with ft_transfer_call ---------
+const units = (n: number) => String(Math.round(n * 1_000_000));
+const usdGrant = await owner.grantRein("usd-agent", {
+  budget: units(25), period_secs: String(SECONDS.day), per_tx_cap: units(10), token: CFG.token,
+});
+const usd = new AgentClient(CFG.owner, usdGrant.secretKey, provider, CFG.contract, reins);
+const before = await reins.tokenVaultOf(CFG.owner, CFG.token);
+const p7 = await usd.rawPayUnits(CFG.merchant, units(4), "4 tUSD invoice");
+log(`\n9. rein #${usdGrant.reinId}: 25 tUSD/day, 10 per payment. Agent pays 4 tUSD ->`, p7.error ?? "paid", link(p7.txHash));
+if (!p7.error) record({ label: "demo: tUSD stablecoin payment", txHash: p7.txHash, signer: CFG.owner, expect: "payment" });
+const p8 = await usd.rawPayUnits(CFG.merchant, units(12));
+log(`   agent tries 12 tUSD -> ${p8.error}`);
+log(`   owner's tUSD vault ${Number(before) / 1e6} -> ${Number(await reins.tokenVaultOf(CFG.owner, CFG.token)) / 1e6}`);
 
 const r = (await reins.getRein(grant.reinId))!;
 log(`\nfinal: rein #${r.id} spent ${fromYocto(r.spent)} / ${fromYocto(r.terms.budget)} NEAR today, ${r.uses} payments; stats`, await reins.stats());
