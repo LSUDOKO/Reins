@@ -24,6 +24,7 @@ import { copyText, IconCheck, IconCopy, shortHex } from "./ui";
 import { ThemeToggle } from "./Theme";
 import { Logo } from "./Logo";
 import { DangerModal, type DangerPhase } from "./Confirm";
+import { SignInGate } from "./Gate";
 
 
 export function Cockpit({
@@ -48,7 +49,14 @@ export function Cockpit({
   const path = usePathname();
   const here = (p: string) => (p === "/app" ? path?.startsWith("/app") || path?.startsWith("/rein") : path?.startsWith(p));
   return (
+    <SignInGate>
     <div className="app">
+      {!wallet.accountId && (
+        <div className="demobar" role="status">
+          Read-only demo. Sign in to manage your own reins.
+          <button className="primary" onClick={wallet.signIn}>Sign in</button>
+        </div>
+      )}
       <aside className="rail">
         <Logo href="/app" />
         <nav className="navlinks" aria-label="Sections">
@@ -95,6 +103,7 @@ export function Cockpit({
       </aside>
       <div className="maincol">{children}</div>
     </div>
+    </SignInGate>
   );
 }
 
