@@ -11,6 +11,7 @@ Reins: per-agent spending limits on NEAR. Rust contract + TypeScript SDK + MCP s
 | JS tests (offline) | `bun test packages/sdk packages/mcp` | `26 pass` |
 | Typecheck | `bun run typecheck` | no output |
 | Verify deployment, no keys | `bun run verify` | every row `PASS` (needs network) |
+| Build web console | `bun run --cwd packages/dashboard build` | static site in `packages/dashboard/out` |
 | Build wasm | `cd contracts/reins && cargo near build non-reproducible-wasm` | `target/near/reins/reins.wasm` |
 | Own testnet deploy | `PREFIX=<name> ./scripts/deploy.sh` then `PREFIX=<name> bun run demo` / `bun run attack` | logs in `demo/logs/` |
 
@@ -19,6 +20,7 @@ Reins: per-agent spending limits on NEAR. Rust contract + TypeScript SDK + MCP s
 - `contracts/reins/src`: `lib.rs` state, `guard.rs` spend rules, `owner.rs` owner methods (need ≥1 yoctoNEAR), `agent.rs` agent methods + settlement callback, `views.rs`, `tests.rs`.
 - `packages/sdk/src`: `client.ts` views, `owner.ts`, `agent.ts` (`guardedPay`), `policy.ts` verdicts, `counterparty.ts` signal sources, `tx.ts`.
 - `packages/mcp/src`: `server.ts` tools, `intents.ts` 1Click dry quotes.
+- `packages/dashboard`: Next.js console (static export, NEAR Wallet Selector).
 - `scripts/`: deploy, demo, attack, verify, owner CLI.
 
 ## Conventions
