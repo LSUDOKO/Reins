@@ -63,7 +63,8 @@ impl Reins {
         if self.blocked_for(&owner, receiver) {
             return Err(RECEIVER_BLOCKED);
         }
-        if self.vault(&owner) < amount {
+        // Cross-chain reins spend from their derived address on the other chain, not the vault.
+        if leaf.terms.evm_chain_id.is_none() && self.vault_in(&owner, &leaf.terms.token) < amount {
             return Err(VAULT_EMPTY);
         }
         if !approved {
@@ -92,8 +93,11 @@ impl Reins {
             owner = Some(r.owner.clone());
         }
         let owner = owner.unwrap();
-        let v = self.vault(&owner);
-        self.set_vault(&owner, v - amount);
+        let terms = self.rein(id).terms.clone();
+        if terms.evm_chain_id.is_none() {
+            let v = self.vault_in(&owner, &terms.token);
+            self.set_vault_in(&owner, &terms.token, v - amount);
+        }
         chain
     }
 
@@ -106,7 +110,10 @@ impl Reins {
                 r.uses = r.uses.saturating_sub(1);
             }
         }
-        let v = self.vault(owner);
-        self.set_vault(owner, v + amount);
+        let terms = self.rein(chain[0]).terms.clone();
+        if terms.evm_chain_id.is_none() {
+            let v = self.vault_in(owner, &terms.token);
+            self.set_vault_in(owner, &terms.token, v + amount);
+        }
     }
 }
