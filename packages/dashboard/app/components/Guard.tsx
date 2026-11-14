@@ -336,7 +336,8 @@ function Timeline({ txs, open, onOpen }: { txs: TxView[] | null; open: string | 
 }
 
 function Run({ x, open, onOpen }: { x: TxView; open: boolean; onOpen: () => void }) {
-  const reverted = !!x.panic && x.panic !== "unavailable";
+  // a failed transfer inside a settled call is a rollback (payment_failed), not a refusal
+  const reverted = !!x.panic && x.panic !== "unavailable" && x.events.length === 0;
   const main = x.events.find((e) => EVENT_LABEL[e.event]);
   const status = reverted ? `Refused · ${x.panic}` : main ? EVENT_LABEL[main.event] : x.panic === "unavailable" ? "Unavailable" : "Settled";
   const tone = reverted ? "muted" : main?.event === "payment_failed" ? "wait" : x.panic === "unavailable" ? "muted" : "ok";
