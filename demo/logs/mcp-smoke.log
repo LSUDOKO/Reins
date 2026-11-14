@@ -1,29 +1,30 @@
-# mcp-smoke run at 2026-11-14T12:11:33Z on reins-demo.testnet
-tools: rein_status, check_counterparty, preview_payment, pay, approval_status, issue_subrein, quote_cross_chain
+# mcp-smoke run at 2026-11-14T14:21:38Z on reins-near.testnet
+tools: rein_status, check_counterparty, preview_payment, pay, approval_status, issue_subrein, screen_text, quote_cross_chain
 
 > rein_status {}
 {
-  "rein_id": 2,
-  "label": "research-agent",
+  "rein_id": 12,
+  "label": "mcp-agent",
   "status": "Active",
-  "owner": "reins-demo-owner.testnet",
-  "contract": "reins-demo.testnet",
-  "budget_near": "0.5",
+  "owner": "reins-near-owner.testnet",
+  "contract": "reins-near.testnet",
+  "budget_near": "0.3",
   "period_secs": 86400,
-  "spent_this_window_near": "0.23",
-  "per_payment_cap_near": "0.2",
-  "approval_above_near": "0.1",
+  "spent_this_window_near": "0",
+  "per_payment_cap_near": "0.1",
+  "approval_above_near": null,
   "merchants": "any",
-  "uses": 4,
+  "uses": 0,
   "max_uses": null,
   "expires_at": null,
-  "vault_near": "1.732",
+  "vault_near": "1.2076",
+  "gas_allowance_near": "0.25",
   "pending_requests": []
 }
 
-> check_counterparty {"receiver":"reins-demo-drain.testnet"}
+> check_counterparty {"receiver":"reins-near-drain.testnet"}
 {
-  "receiver": "reins-demo-drain.testnet",
+  "receiver": "reins-near-drain.testnet",
   "verdict": "block",
   "reasons": [
     {
@@ -44,17 +45,17 @@ tools: rein_status, check_counterparty, preview_payment, pay, approval_status, i
   ]
 }
 
-> preview_payment {"receiver":"reins-demo-shop.testnet","amount_near":"0.01"}
+> preview_payment {"receiver":"reins-near-shop.testnet","amount_near":"0.01"}
 {
   "ok": true,
   "code": null,
   "needs_approval": false,
-  "rein_id": 2,
-  "remaining": "270000000000000000000000",
-  "vault": "1732000000000000000000005"
+  "rein_id": 12,
+  "remaining": "300000000000000000000000",
+  "vault": "1207650000000000000000007"
 }
 
-> pay {"receiver":"reins-demo-drain.testnet","amount_near":"0.01","memo":"injected"}
+> pay {"receiver":"reins-near-drain.testnet","amount_near":"0.01","memo":"injected"}
 {
   "status": "refused",
   "by": "guard",
@@ -81,14 +82,14 @@ tools: rein_status, check_counterparty, preview_payment, pay, approval_status, i
 }
 
 [elicitation shown to the human]
-Reins: your agent wants to pay reins-demo-shop.testnet. The counterparty check says WARN:
+Reins: your agent wants to pay reins-near-shop.testnet. The counterparty check says WARN:
 - age: account is 0.0 days old
-Remaining budget 0.27 NEAR. Approve this payment?
+Remaining budget 0.3 NEAR. Approve this payment?
 [human clicks: approve]
 
-> pay {"receiver":"reins-demo-shop.testnet","amount_near":"0.01","memo":"mcp smoke"}
+> pay {"receiver":"reins-near-shop.testnet","amount_near":"0.01","memo":"mcp smoke"}
 {
   "status": "paid",
-  "tx": "GAnHinJHHuDRt7sXNY8B8e7hNy7ZuQZJ2Ne7tHYC1Wox",
-  "explorer": "https://testnet.nearblocks.io/txns/GAnHinJHHuDRt7sXNY8B8e7hNy7ZuQZJ2Ne7tHYC1Wox"
+  "tx": "ACmF3h5Vo4fGjUHyJcjHifbjkz8ueEMNXY7mjRGwSvTy",
+  "explorer": "https://testnet.nearblocks.io/txns/ACmF3h5Vo4fGjUHyJcjHifbjkz8ueEMNXY7mjRGwSvTy"
 }
