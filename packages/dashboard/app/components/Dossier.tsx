@@ -11,7 +11,7 @@
 // the verbs, tabs and carousel chrome never move.
 // Every verb is a transaction the owner's NEAR wallet signs.
 
-import { ExplainRein } from "./Plain";
+import { ExplainRein, ReinFacts } from "./Plain";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, type Variants } from "motion/react";
 import type { CardState, TreeNode } from "@/lib/api";
@@ -149,7 +149,8 @@ export function Dossier({
               onConnect={connect}
             />
             <div style={{ maxWidth: 640, margin: "6px auto 0", textAlign: "left" }}>
-              <ExplainRein terms={card.raw.terms} label={card.name} />
+              {card.raw && <ReinFacts id={Number(card.card_id)} currency={card.currency} agentAccount={card.agent_account} owner={card.owner} />}
+              {card.raw && <ExplainRein terms={card.raw.terms} label={card.name} />}
             </div>
           </>
         ) : (
@@ -499,7 +500,7 @@ function HeadBody({ card }: { card: CardState }) {
 
   const plabel = card.terms.pay?.period ? periodLabel(card.terms.pay.period.seconds) : null;
   const span = plabel === "day" ? "today" : plabel === "wk" ? "this week" : plabel === "mo" ? "this month" : "lifetime";
-  const scope = `of Ⓝ${(cap ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2 })} ${span}`;
+  const scope = `of ${card.sym}${(cap ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2 })} ${span}`;
 
   const when = dead
     ? card.status === "expired" && card.expires_at
@@ -521,7 +522,7 @@ function HeadBody({ card }: { card: CardState }) {
       <motion.div className="money num" variants={rowVariants}>
         <div className="fig">
           <span data-testid="remaining">
-            <span className="cur">Ⓝ</span>
+            <span className="cur">{card.sym.trim()}</span>
             <span className="int">{whole}</span>
             <span className="dec">.{cents}</span>
           </span>
