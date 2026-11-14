@@ -34,8 +34,10 @@ switch (cmd) {
     const [vault, list, pending] = await Promise.all([reins.vaultOf(CFG.owner), reins.reinsOf(CFG.owner), reins.pendingRequestsOf(CFG.owner)]);
     console.log(`owner ${CFG.owner} on ${CFG.contract}\nvault ${fromYocto(vault)} NEAR\n`);
     for (const r of list) {
+      const allowance = r.status === "Revoked" ? null : await reins.keyAllowance(CFG.owner, r.agent_key);
+      const gas = allowance === null ? "key not on account" : /^\d+$/.test(allowance) ? `gas ${fromYocto(allowance)} NEAR` : allowance;
       console.log(`#${r.id} ${r.label.padEnd(18)} ${r.status.padEnd(8)} spent ${fromYocto(r.spent)}/${fromYocto(r.terms.budget)} NEAR` +
-        ` cap ${fromYocto(r.terms.per_tx_cap)}${r.parent ? ` parent #${r.parent}` : ""}  ${r.agent_key}`);
+        ` cap ${fromYocto(r.terms.per_tx_cap)}${r.parent ? ` parent #${r.parent}` : ""}  ${gas}`);
     }
     console.log(pending.length ? `\npending approvals:` : "\nno pending approvals");
     for (const q of pending) console.log(`  request ${q.id}: rein #${q.rein_id} wants ${fromYocto(q.amount)} NEAR -> ${q.receiver} (${q.memo ?? ""})`);
