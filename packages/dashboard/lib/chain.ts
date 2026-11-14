@@ -3,10 +3,10 @@
 
 export const NETWORK = "testnet" as const;
 export const CHAIN_NAME = "NEAR testnet";
-export const CONTRACT_ID = process.env.NEXT_PUBLIC_REINS_CONTRACT ?? "reins-demo.testnet";
+export const CONTRACT_ID = process.env.NEXT_PUBLIC_REINS_CONTRACT ?? "reins-near.testnet";
 export const RPC_URL = process.env.NEXT_PUBLIC_NEAR_RPC ?? "https://test.rpc.fastnear.com";
 /** The owner the console shows before anyone signs in (read-only). */
-export const DEMO_OWNER = process.env.NEXT_PUBLIC_DEMO_OWNER ?? "reins-demo-owner.testnet";
+export const DEMO_OWNER = process.env.NEXT_PUBLIC_DEMO_OWNER ?? "reins-near-owner.testnet";
 export const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 
 /** Methods an agent key may call · nothing else is ever granted. Taken from the SDK
