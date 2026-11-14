@@ -1,0 +1,17 @@
+# crosschain run at 2026-11-14T14:14:30.647Z on reins-near.testnet
+1. rein #1 pays on Base Sepolia (chain 84532): 0.002 ETH/day, 0.001 ETH per payment, only 0x000000000000000000000000000000000000dead
+   it controls 0x7a108500d8e1aaca8a1d9abcafe1607509326170 (derived from reins-near.testnet + "reins-1" by NEAR Chain Signatures)
+
+2. agent asks to pay 0.0001 ETH (nonce 0, max fee 13000000 wei/gas)
+   -> signed by the MPC network https://testnet.nearblocks.io/txns/3y8qKiaonBMUUfgEykdZ9Af57W5qPxXFAbXtFpoyvd1G
+
+3. recovered signer 0x7a108500d8e1aaca8a1d9abcafe1607509326170 == rein address ✓
+
+4. not broadcast: 0x7a108500d8e1aaca8a1d9abcafe1607509326170 holds 0 wei on Base Sepolia. Fund it and run:
+   curl https://sepolia.base.org -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"eth_sendRawTransaction","params":["0x02f87183014a3480830f42…"]}'
+
+5. agent tries a merchant outside the list
+   -> merchant_not_allowed https://testnet.nearblocks.io/txns/8CY5HjXBCSorFWmiufJdP1dLTouaozV1nPv1rPutuJMX
+   agent tries 0.01 ETH (cap 0.001) -> over_per_tx_cap https://testnet.nearblocks.io/txns/A9JaTqbYrowsufZ9gqHZGDrvFgFMnVWqMamDuMw3ri6x
+
+rein #1: 100273000000000 wei booked today (value + worst-case fee), EVM nonce 1; MPC signatures so far: 1
