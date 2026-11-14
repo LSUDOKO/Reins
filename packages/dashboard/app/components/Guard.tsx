@@ -145,6 +145,9 @@ function Status({ stats, version }: { stats: Stats; version: string | null }) {
         <Stat n={stats.reins} label="reins" />
         <Stat n={stats.payments} label="payments settled" />
         <Stat n={stats.requests} label="approval requests" />
+        {typeof (stats as { evm_signatures?: number }).evm_signatures === "number" && (
+          <Stat n={(stats as { evm_signatures?: number }).evm_signatures as number} label="Chain Signatures signed" />
+        )}
         <span className="khstat">
           <b>Ⓝ{fromYocto(stats.volume)}</b> moved
         </span>
