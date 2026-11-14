@@ -26,7 +26,7 @@ export class ReinsClient {
 
   getRein(id: number) { return this.view<Rein | null>("get_rein", { id }); }
   reinsOf(owner: string) { return this.view<Rein[]>("reins_of", { owner }); }
-  reinForKey(owner: string, public_key: string) { return this.view<Rein | null>("rein_for_key", { owner, public_key }); }
+  reinForKey(account: string, public_key: string) { return this.view<Rein | null>("rein_for_key", { account, public_key }); }
   vaultOf(owner: string) { return this.view<string>("vault_of", { owner }); }
   getRequest(id: number) { return this.view<PayRequest | null>("get_request", { id }); }
   pendingRequestsOf(owner: string) { return this.view<PayRequest[]>("pending_requests_of", { owner }); }
