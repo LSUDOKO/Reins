@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 import { fromYocto, type PayRequest } from "@reins/sdk";
 import { api, reins, type CardState } from "@/lib/api";
 import { CONTRACT_ID } from "@/lib/chain";
+import { fromUnits, toUnits, TUSD } from "@/lib/currency";
 import { nearToYocto, useWallet, type Wallet } from "@/lib/near";
 import { Cockpit } from "../components/Shell";
 import { shortHex } from "../components/ui";
@@ -59,6 +60,7 @@ export default function SettingsPage() {
         <h1 style={{ fontSize: 22, margin: "4px 0 14px" }}>Settings</h1>
         {msg && <p className="ok" style={{ margin: "0 0 10px" }}>{msg}</p>}
         <VaultSection owner={owner} wallet={wallet} flash={flash} />
+        <TokenVaultSection owner={owner} wallet={wallet} flash={flash} />
         <ApprovalsSection owner={owner} wallet={wallet} flash={flash} />
         <AllowSection owner={owner} wallet={wallet} flash={flash} />
         <KeysSection owner={owner} cards={cards} />
@@ -114,6 +116,68 @@ function VaultSection({ owner, wallet, flash }: { owner: string; wallet: Wallet;
       <div className="crform">
         <label className="span2">
           Amount · NEAR
+          <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" />
+        </label>
+        <div className="cractions">
+          <button className="primary" disabled={busy || !(parseFloat(amount) > 0)} onClick={go("deposit")}>
+            Deposit
+          </button>
+          <button className="acretry" disabled={busy || !(parseFloat(amount) > 0)} onClick={go("withdraw")}>
+            Withdraw
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+
+/** The tUSD (NEP-141) vault: deposits go through the token's ft_transfer_call. */
+function TokenVaultSection({ owner, wallet, flash }: { owner: string; wallet: Wallet; flash: (m: string) => void }) {
+  const [vault, setVault] = useState<string | null>(null);
+  const [amount, setAmount] = useState("10");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const load = useCallback(
+    () => reins.view<string>("token_vault_of", { owner, token: TUSD }).then((v) => setVault(fromUnits(v, "tUSD", 2))).catch(() => setVault(null)),
+    [owner],
+  );
+  useEffect(() => {
+    void load();
+  }, [load]);
+  const go = (method: "deposit" | "withdraw") => async () => {
+    setBusy(true);
+    setErr(null);
+    try {
+      const units = toUnits(amount, "tUSD");
+      if (method === "deposit") await wallet.callOn(TUSD, "ft_transfer_call", { receiver_id: CONTRACT_ID, amount: units, msg: "" }, 1n);
+      else await wallet.call("withdraw_token", { token: TUSD, amount: units });
+      flash(method === "deposit" ? `Deposited ${amount} tUSD` : `Withdrew ${amount} tUSD`);
+      await load();
+    } catch (e) {
+      setErr(errText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <section className="setsec">
+      <h2>Token vault · tUSD</h2>
+      <p className="lede">
+        Reins whose terms name <code>{TUSD}</code> pay in it. Deposit with the token&apos;s <code>ft_transfer_call</code> to the
+        contract; withdraw with your full-access key.
+      </p>
+      {err && <p className="err">{err}</p>}
+      <div className="setrow">
+        <div className="main">
+          {vault ?? "–"} tUSD
+          <div className="sub">spendable by tUSD reins</div>
+        </div>
+      </div>
+      <div className="crform">
+        <label className="span2">
+          Amount · tUSD
           <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" />
         </label>
         <div className="cractions">
