@@ -1,0 +1,23 @@
+name: Feature request
+description: Propose a new rule, integration or tool.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What can an owner or agent not do today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: How it should work, and which part enforces it (contract, guard, console).
+    validations:
+      required: true
+  - type: textarea
+    id: security
+    attributes:
+      label: Security impact
+      description: Could this widen what an agent key can do? How is that prevented?
