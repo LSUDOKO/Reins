@@ -48,7 +48,7 @@ export interface Receipt {
   label: string;
   txHash: string;
   signer: string;
-  expect: "payment" | "payment_failed" | "approval_requested" | "rein_created" | "panic";
+  expect: "payment" | "payment_failed" | "approval_requested" | "rein_created" | "evm_payment_signed" | "token_deposit" | "panic";
   code?: string;
 }
 

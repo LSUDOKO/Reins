@@ -16,7 +16,8 @@
     "mcp:smoke": "bun run scripts/mcp-smoke.ts",
     "typecheck": "tsc -p .",
     "dashboard": "bun run --cwd packages/dashboard dev",
-    "dashboard:build": "bun run --cwd packages/dashboard build"
+    "dashboard:build": "bun run --cwd packages/dashboard build",
+    "crosschain": "bun run scripts/crosschain.ts"
   },
   "dependencies": {
     "@reins/sdk": "workspace:*",
