@@ -48,7 +48,10 @@ impl Reins {
         if let Some(m) = &memo {
             require!(m.len() <= MAX_MEMO, "memo_too_long");
         }
-        require!(self.rein(id).terms.evm_chain_id.is_none(), "evm_rein_use_pay_evm");
+        require!(
+            self.rein(id).terms.evm_chain_id.is_none(),
+            "evm_rein_use_pay_evm"
+        );
         let at = now();
         if let Err(code) = self.check(id, &receiver, amount.0, false, at) {
             fail(code);
@@ -61,7 +64,12 @@ impl Reins {
     /// Ask the owner to approve a payment above the rein's approval threshold. The request is
     /// checked against every other rule now, so the owner is only asked about payments that
     /// could actually go through. Expires after 24 hours.
-    pub fn request_approval(&mut self, receiver: AccountId, amount: U128, memo: Option<String>) -> RequestId {
+    pub fn request_approval(
+        &mut self,
+        receiver: AccountId,
+        amount: U128,
+        memo: Option<String>,
+    ) -> RequestId {
         let id = self.caller_rein();
         if let Some(m) = &memo {
             require!(m.len() <= MAX_MEMO, "memo_too_long");
@@ -74,30 +82,43 @@ impl Reins {
         }
         let owner = self.rein(id).owner.clone();
         self.expire_stale(&owner, id, at);
-        require!(self.rein(id).pending_requests < MAX_PENDING_PER_REIN, "too_many_pending_requests");
+        require!(
+            self.rein(id).pending_requests < MAX_PENDING_PER_REIN,
+            "too_many_pending_requests"
+        );
 
         let before = self.usage();
         let rid = self.next_request;
         self.next_request += 1;
-        self.requests.insert(rid, PayRequest {
-            id: rid,
-            rein_id: id,
-            owner: owner.clone(),
-            receiver: receiver.clone(),
-            amount,
-            memo: memo.clone(),
-            state: RequestState::Pending,
-            created_at: u64s(at),
-            expires_at: u64s(at + REQUEST_TTL_NS),
-        });
+        self.requests.insert(
+            rid,
+            PayRequest {
+                id: rid,
+                rein_id: id,
+                owner: owner.clone(),
+                receiver: receiver.clone(),
+                amount,
+                memo: memo.clone(),
+                state: RequestState::Pending,
+                created_at: u64s(at),
+                expires_at: u64s(at + REQUEST_TTL_NS),
+            },
+        );
         let requests = &self.requests;
         let list = self.owner_requests.entry(owner.clone()).or_default();
-        list.retain(|q| requests.get(q).is_some_and(|r| r.state == RequestState::Pending));
+        list.retain(|q| {
+            requests
+                .get(q)
+                .is_some_and(|r| r.state == RequestState::Pending)
+        });
         list.push(rid);
         self.reins.get_mut(&id).unwrap().pending_requests += 1;
         self.charge_storage(&owner, before);
-        emit("approval_requested", json!({ "request_id": rid, "rein_id": id, "owner": owner,
-                                           "receiver": receiver, "amount": amount, "memo": memo }));
+        emit(
+            "approval_requested",
+            json!({ "request_id": rid, "rein_id": id, "owner": owner,
+                                           "receiver": receiver, "amount": amount, "memo": memo }),
+        );
         rid
     }
 
@@ -129,8 +150,11 @@ impl Reins {
         let leaf = chain[0];
         if !ok {
             self.unbook(&chain, &owner, amount.0);
-            emit("payment_failed", json!({ "rein_id": leaf, "owner": owner, "receiver": receiver,
-                                           "amount": amount, "request_id": request }));
+            emit(
+                "payment_failed",
+                json!({ "rein_id": leaf, "owner": owner, "receiver": receiver,
+                                           "amount": amount, "request_id": request }),
+            );
             return PromiseOrValue::Value(false);
         }
         let before = self.usage();
@@ -144,11 +168,18 @@ impl Reins {
         self.set_vault(&owner, v.saturating_sub(cost));
         self.payments += 1;
         // `volume` is NEAR only; token payments are visible in their events.
-        if self.reins.get(&leaf).is_some_and(|r| r.terms.token.is_none()) {
+        if self
+            .reins
+            .get(&leaf)
+            .is_some_and(|r| r.terms.token.is_none())
+        {
             self.volume += amount.0;
         }
-        emit("payment", json!({ "rein_id": leaf, "chain": chain, "owner": owner, "receiver": receiver,
-                                "amount": amount, "memo": memo, "request_id": request, "pair_count": n }));
+        emit(
+            "payment",
+            json!({ "rein_id": leaf, "chain": chain, "owner": owner, "receiver": receiver,
+                                "amount": amount, "memo": memo, "request_id": request, "pair_count": n }),
+        );
         PromiseOrValue::Value(true)
     }
 }

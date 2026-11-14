@@ -8,7 +8,12 @@ impl Reins {
     /// owner has not explicitly allowed it.
     pub(crate) fn blocked_for(&self, owner: &AccountId, receiver: &AccountId) -> bool {
         let reported = self.reports.get(receiver).is_some_and(|r| !r.is_empty());
-        reported && !self.allow_overrides.get(&pair_of(owner, receiver)).copied().unwrap_or(false)
+        reported
+            && !self
+                .allow_overrides
+                .get(&pair_of(owner, receiver))
+                .copied()
+                .unwrap_or(false)
     }
 
     /// Validate a payment of `amount` from rein `id` to `receiver` at time `at`.

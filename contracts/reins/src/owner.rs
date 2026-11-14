@@ -11,7 +11,10 @@ pub const CALLBACK_GAS: Gas = Gas::from_tgas(10);
 /// Requires a full-access signature and credits whatever was attached to the owner's vault.
 fn full_access_owner(this: &mut Reins) -> AccountId {
     let deposit = env::attached_deposit().as_yoctonear();
-    require!(deposit >= 1, "full_access_key_required: attach at least 1 yoctoNEAR");
+    require!(
+        deposit >= 1,
+        "full_access_key_required: attach at least 1 yoctoNEAR"
+    );
     let owner = env::predecessor_account_id();
     let v = this.vault(&owner);
     this.set_vault(&owner, v + deposit);
@@ -28,20 +31,35 @@ impl Reins {
     pub(crate) fn validate_terms(terms: &Terms) {
         require!(terms.budget.0 > 0, "budget_must_be_positive");
         require!(terms.per_tx_cap.0 > 0, "per_tx_cap_must_be_positive");
-        require!(terms.per_tx_cap.0 <= terms.budget.0, "per_tx_cap_above_budget");
+        require!(
+            terms.per_tx_cap.0 <= terms.budget.0,
+            "per_tx_cap_above_budget"
+        );
         if let Some(t) = terms.approval_above {
-            require!(t.0 < terms.per_tx_cap.0, "approval_above_must_be_below_per_tx_cap");
+            require!(
+                t.0 < terms.per_tx_cap.0,
+                "approval_above_must_be_below_per_tx_cap"
+            );
         }
         if let Some(m) = &terms.merchants {
-            require!(!m.is_empty() && m.len() <= MAX_MERCHANTS, "merchants_list_size");
+            require!(
+                !m.is_empty() && m.len() <= MAX_MERCHANTS,
+                "merchants_list_size"
+            );
         }
         if let Some(exp) = terms.expires_at {
-            require!(exp.0.saturating_mul(1_000_000_000) > now(), "expiry_in_the_past");
+            require!(
+                exp.0.saturating_mul(1_000_000_000) > now(),
+                "expiry_in_the_past"
+            );
         }
         if terms.evm_chain_id.is_some() {
             require!(terms.token.is_none(), "evm_rein_cannot_have_token");
             if let Some(m) = &terms.merchants {
-                require!(m.iter().all(|a| crate::evm::is_evm_address(a.as_str())), "evm_merchants_must_be_0x_addresses");
+                require!(
+                    m.iter().all(|a| crate::evm::is_evm_address(a.as_str())),
+                    "evm_merchants_must_be_0x_addresses"
+                );
             }
         }
     }
@@ -68,7 +86,11 @@ impl Reins {
         let live = self
             .owner_reins
             .get(owner)
-            .map(|ids| ids.iter().filter(|i| self.rein(**i).status != Status::Revoked).count())
+            .map(|ids| {
+                ids.iter()
+                    .filter(|i| self.rein(**i).status != Status::Revoked)
+                    .count()
+            })
             .unwrap_or(0);
         require!(live < MAX_REINS_PER_OWNER, "too_many_reins");
 
@@ -77,9 +99,18 @@ impl Reins {
             require!(p.status == Status::Active, "parent_not_active");
             require!(self.chain(pid).len() < MAX_DEPTH, "too_deep");
             require!(p.children.len() < MAX_CHILDREN, "too_many_children");
-            require!(terms.budget.0 <= p.terms.budget.0, "child_budget_above_parent");
-            require!(terms.per_tx_cap.0 <= p.terms.per_tx_cap.0, "child_cap_above_parent");
-            require!(terms.token == p.terms.token && terms.evm_chain_id == p.terms.evm_chain_id, "child_must_use_parent_currency");
+            require!(
+                terms.budget.0 <= p.terms.budget.0,
+                "child_budget_above_parent"
+            );
+            require!(
+                terms.per_tx_cap.0 <= p.terms.per_tx_cap.0,
+                "child_cap_above_parent"
+            );
+            require!(
+                terms.token == p.terms.token && terms.evm_chain_id == p.terms.evm_chain_id,
+                "child_must_use_parent_currency"
+            );
         }
 
         let id = self.next_rein;
@@ -137,19 +168,25 @@ impl Reins {
         touched
     }
 
-    pub(crate) fn send(&mut self, chain: Vec<ReinId>, owner: AccountId, receiver: AccountId,
-                       amount: u128, memo: Option<String>, request: Option<RequestId>) -> Promise {
+    pub(crate) fn send(
+        &mut self,
+        chain: Vec<ReinId>,
+        owner: AccountId,
+        receiver: AccountId,
+        amount: u128,
+        memo: Option<String>,
+        request: Option<RequestId>,
+    ) -> Promise {
         let token = self.rein(chain[0]).terms.token.clone();
         let transfer = match token {
             None => Promise::new(receiver.clone()).transfer(NearToken::from_yoctonear(amount)),
             Some(t) => crate::tokens::ft_transfer(t, receiver.clone(), amount, memo.clone()),
         };
-        transfer
-            .then(
-                Self::ext(env::current_account_id())
-                    .with_static_gas(CALLBACK_GAS)
-                    .on_paid(chain, owner, receiver, U128(amount), memo, request),
-            )
+        transfer.then(
+            Self::ext(env::current_account_id())
+                .with_static_gas(CALLBACK_GAS)
+                .on_paid(chain, owner, receiver, U128(amount), memo, request),
+        )
     }
 }
 
@@ -160,7 +197,10 @@ impl Reins {
     pub fn deposit(&mut self) -> U128 {
         let owner = full_access_owner(self);
         let v = self.vault(&owner);
-        emit("deposit", json!({ "owner": owner, "amount": U128(env::attached_deposit().as_yoctonear()), "vault": U128(v) }));
+        emit(
+            "deposit",
+            json!({ "owner": owner, "amount": U128(env::attached_deposit().as_yoctonear()), "vault": U128(v) }),
+        );
         U128(v)
     }
 
@@ -171,7 +211,10 @@ impl Reins {
         let v = self.vault(&owner);
         require!(amount.0 > 0 && amount.0 <= v, "vault_insufficient");
         self.set_vault(&owner, v - amount.0);
-        emit("withdraw", json!({ "owner": owner, "amount": amount, "vault": U128(v - amount.0) }));
+        emit(
+            "withdraw",
+            json!({ "owner": owner, "amount": amount, "vault": U128(v - amount.0) }),
+        );
         Promise::new(owner).transfer(NearToken::from_yoctonear(amount.0))
     }
 
@@ -182,7 +225,13 @@ impl Reins {
     ///
     /// `agent_account`: optional named sub-account of yours (e.g. `research.you.testnet`) that
     /// will hold the agent key instead of your own account.
-    pub fn create_rein(&mut self, agent_key: PublicKey, label: String, terms: Terms, agent_account: Option<AccountId>) -> ReinId {
+    pub fn create_rein(
+        &mut self,
+        agent_key: PublicKey,
+        label: String,
+        terms: Terms,
+        agent_account: Option<AccountId>,
+    ) -> ReinId {
         let owner = full_access_owner(self);
         let before = self.usage();
         let id = self.insert_rein(&owner, agent_key, label, terms, None, agent_account);
@@ -192,7 +241,14 @@ impl Reins {
 
     /// Owner-created sub-rein for a sub-agent. Its spending also counts against every ancestor.
     #[payable]
-    pub fn create_subrein(&mut self, parent: ReinId, agent_key: PublicKey, label: String, terms: Terms, agent_account: Option<AccountId>) -> ReinId {
+    pub fn create_subrein(
+        &mut self,
+        parent: ReinId,
+        agent_key: PublicKey,
+        label: String,
+        terms: Terms,
+        agent_account: Option<AccountId>,
+    ) -> ReinId {
         let owner = full_access_owner(self);
         let before = self.usage();
         let id = self.insert_rein(&owner, agent_key, label, terms, Some(parent), agent_account);
@@ -208,8 +264,14 @@ impl Reins {
         Self::validate_terms(&terms);
         if let Some(pid) = parent {
             let p = self.rein(pid);
-            require!(terms.budget.0 <= p.terms.budget.0, "child_budget_above_parent");
-            require!(terms.per_tx_cap.0 <= p.terms.per_tx_cap.0, "child_cap_above_parent");
+            require!(
+                terms.budget.0 <= p.terms.budget.0,
+                "child_budget_above_parent"
+            );
+            require!(
+                terms.per_tx_cap.0 <= p.terms.per_tx_cap.0,
+                "child_cap_above_parent"
+            );
         }
         let before = self.usage();
         let r = self.reins.get_mut(&id).unwrap();
@@ -271,14 +333,21 @@ impl Reins {
             self.allow_overrides.remove(&k);
         }
         self.charge_storage(&owner, before);
-        emit("allow_set", json!({ "owner": owner, "receiver": receiver, "allowed": allowed }));
+        emit(
+            "allow_set",
+            json!({ "owner": owner, "receiver": receiver, "allowed": allowed }),
+        );
     }
 
     /// Approve an agent's request. All rules except the approval threshold are checked again.
     #[payable]
     pub fn approve_request(&mut self, id: RequestId) -> Promise {
         let owner = full_access_owner(self);
-        let req = self.requests.get(&id).cloned().unwrap_or_else(|| env::panic_str("request_not_found"));
+        let req = self
+            .requests
+            .get(&id)
+            .cloned()
+            .unwrap_or_else(|| env::panic_str("request_not_found"));
         require!(req.owner == owner, "not_owner");
         require!(req.state == RequestState::Pending, "request_not_pending");
         let at = now();
@@ -291,14 +360,20 @@ impl Reins {
         }
         self.close_request(id, RequestState::Approved);
         let chain = self.book(req.rein_id, req.amount.0, at);
-        emit("approved", json!({ "request_id": id, "rein_id": req.rein_id }));
+        emit(
+            "approved",
+            json!({ "request_id": id, "rein_id": req.rein_id }),
+        );
         self.send(chain, owner, req.receiver, req.amount.0, req.memo, Some(id))
     }
 
     #[payable]
     pub fn reject_request(&mut self, id: RequestId) {
         let owner = full_access_owner(self);
-        let req = self.requests.get(&id).unwrap_or_else(|| env::panic_str("request_not_found"));
+        let req = self
+            .requests
+            .get(&id)
+            .unwrap_or_else(|| env::panic_str("request_not_found"));
         require!(req.owner == owner, "not_owner");
         require!(req.state == RequestState::Pending, "request_not_pending");
         self.close_request(id, RequestState::Rejected);
@@ -311,13 +386,21 @@ impl Reins {
     pub fn report(&mut self, account: AccountId, evidence_hash: String, evidence_uri: String) {
         let reporter = env::predecessor_account_id();
         let deposit = env::attached_deposit().as_yoctonear();
-        require!(evidence_hash.len() == 64 && evidence_hash.chars().all(|c| c.is_ascii_hexdigit()),
-                 "evidence_hash_must_be_sha256_hex");
-        require!(!evidence_uri.is_empty() && evidence_uri.len() <= 256, "evidence_uri_size");
+        require!(
+            evidence_hash.len() == 64 && evidence_hash.chars().all(|c| c.is_ascii_hexdigit()),
+            "evidence_hash_must_be_sha256_hex"
+        );
+        require!(
+            !evidence_uri.is_empty() && evidence_uri.len() <= 256,
+            "evidence_uri_size"
+        );
         let before = self.usage();
         let list = self.reports.entry(account.clone()).or_default();
         require!(list.len() < MAX_REPORTS_PER_ACCOUNT, "too_many_reports");
-        require!(!list.iter().any(|r| r.reporter == reporter), "already_reported");
+        require!(
+            !list.iter().any(|r| r.reporter == reporter),
+            "already_reported"
+        );
         list.push(Report {
             reporter: reporter.clone(),
             evidence_hash: evidence_hash.clone(),
@@ -328,10 +411,21 @@ impl Reins {
         let used = u128::from(self.usage().saturating_sub(before));
         let storage = env::storage_byte_cost().as_yoctonear() * used;
         let bond = deposit.saturating_sub(storage);
-        require!(bond >= REPORT_BOND.as_yoctonear(), "bond_too_small: attach 0.1 NEAR plus storage");
-        self.reports.get_mut(&account).unwrap().last_mut().unwrap().bond = U128(bond);
-        emit("reported", json!({ "account": account, "reporter": reporter,
-                                 "evidence_hash": evidence_hash, "evidence_uri": evidence_uri, "bond": U128(bond) }));
+        require!(
+            bond >= REPORT_BOND.as_yoctonear(),
+            "bond_too_small: attach 0.1 NEAR plus storage"
+        );
+        self.reports
+            .get_mut(&account)
+            .unwrap()
+            .last_mut()
+            .unwrap()
+            .bond = U128(bond);
+        emit(
+            "reported",
+            json!({ "account": account, "reporter": reporter,
+                                 "evidence_hash": evidence_hash, "evidence_uri": evidence_uri, "bond": U128(bond) }),
+        );
     }
 
     /// Withdraw your report and get the bond back.
@@ -339,13 +433,22 @@ impl Reins {
     pub fn retract_report(&mut self, account: AccountId) -> Promise {
         near_sdk::assert_one_yocto();
         let reporter = env::predecessor_account_id();
-        let list = self.reports.get_mut(&account).unwrap_or_else(|| env::panic_str("no_reports"));
-        let pos = list.iter().position(|r| r.reporter == reporter).unwrap_or_else(|| env::panic_str("no_report_by_you"));
+        let list = self
+            .reports
+            .get_mut(&account)
+            .unwrap_or_else(|| env::panic_str("no_reports"));
+        let pos = list
+            .iter()
+            .position(|r| r.reporter == reporter)
+            .unwrap_or_else(|| env::panic_str("no_report_by_you"));
         let r = list.remove(pos);
         if list.is_empty() {
             self.reports.remove(&account);
         }
-        emit("report_retracted", json!({ "account": account, "reporter": reporter }));
+        emit(
+            "report_retracted",
+            json!({ "account": account, "reporter": reporter }),
+        );
         Promise::new(reporter).transfer(NearToken::from_yoctonear(r.bond.0 + 1))
     }
 }

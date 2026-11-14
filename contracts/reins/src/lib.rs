@@ -16,8 +16,8 @@ use near_sdk::{env, near, AccountId, NearToken, PanicOnDefault, PublicKey};
 
 mod agent;
 mod errors;
-mod evm;
 mod events;
+mod evm;
 mod guard;
 mod owner;
 mod tokens;
@@ -127,7 +127,11 @@ pub(crate) fn window_spent(r: &Rein, at: u64) -> u128 {
 
 pub(crate) fn window_elapsed(r: &Rein, at: u64) -> bool {
     let p = r.terms.period_secs.0;
-    p > 0 && at >= r.window_start.0.saturating_add(p.saturating_mul(1_000_000_000))
+    p > 0
+        && at
+            >= r.window_start
+                .0
+                .saturating_add(p.saturating_mul(1_000_000_000))
 }
 
 pub(crate) fn remaining(r: &Rein, at: u64) -> u128 {
@@ -144,7 +148,9 @@ pub(crate) fn u64s(v: u64) -> U64 {
 
 impl Reins {
     pub(crate) fn rein(&self, id: ReinId) -> &Rein {
-        self.reins.get(&id).unwrap_or_else(|| env::panic_str("rein_not_found"))
+        self.reins
+            .get(&id)
+            .unwrap_or_else(|| env::panic_str("rein_not_found"))
     }
 
     /// The rein followed by its ancestors, leaf first.
@@ -170,7 +176,11 @@ impl Reins {
     pub(crate) fn vault_in(&self, owner: &AccountId, token: &Option<AccountId>) -> u128 {
         match token {
             None => self.vault(owner),
-            Some(t) => self.token_vaults.get(&token_key(owner, t)).copied().unwrap_or(0),
+            Some(t) => self
+                .token_vaults
+                .get(&token_key(owner, t))
+                .copied()
+                .unwrap_or(0),
         }
     }
 

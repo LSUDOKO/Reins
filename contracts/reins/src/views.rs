@@ -18,7 +18,11 @@ impl Reins {
     pub fn reins_of(&self, owner: AccountId) -> Vec<Rein> {
         self.owner_reins
             .get(&owner)
-            .map(|ids| ids.iter().filter_map(|i| self.reins.get(i).cloned()).collect())
+            .map(|ids| {
+                ids.iter()
+                    .filter_map(|i| self.reins.get(i).cloned())
+                    .collect()
+            })
             .unwrap_or_default()
     }
 
@@ -67,25 +71,59 @@ impl Reins {
 
     /// Settled payments from `owner` to `receiver` through any rein.
     pub fn pair_count(&self, owner: AccountId, receiver: AccountId) -> u32 {
-        self.pair_count.get(&pair_of(&owner, &receiver)).copied().unwrap_or(0)
+        self.pair_count
+            .get(&pair_of(&owner, &receiver))
+            .copied()
+            .unwrap_or(0)
     }
 
     /// What `pay` would do right now for this key, without doing it.
     /// `owner` is the account holding the key (the owner, or the rein's named sub-account).
-    pub fn preview_pay(&self, owner: AccountId, public_key: PublicKey, receiver: AccountId, amount: U128) -> Preview {
+    pub fn preview_pay(
+        &self,
+        owner: AccountId,
+        public_key: PublicKey,
+        receiver: AccountId,
+        amount: U128,
+    ) -> Preview {
         let Some(id) = self.key_index.get(&key_of(&owner, &public_key)).copied() else {
             let vault = U128(self.vault(&owner));
-            return Preview { ok: false, code: Some(errors::UNKNOWN_KEY.into()), needs_approval: false,
-                             rein_id: None, remaining: U128(0), vault };
+            return Preview {
+                ok: false,
+                code: Some(errors::UNKNOWN_KEY.into()),
+                needs_approval: false,
+                rein_id: None,
+                remaining: U128(0),
+                vault,
+            };
         };
         let leaf = self.rein(id);
         let vault = U128(self.vault_in(&leaf.owner, &leaf.terms.token));
         let at = now();
-        let remaining = U128(self.chain(id).iter().map(|r| crate::remaining(self.rein(*r), at)).min().unwrap_or(0));
+        let remaining = U128(
+            self.chain(id)
+                .iter()
+                .map(|r| crate::remaining(self.rein(*r), at))
+                .min()
+                .unwrap_or(0),
+        );
         match self.check(id, &receiver, amount.0, false, at) {
-            Ok(_) => Preview { ok: true, code: None, needs_approval: false, rein_id: Some(id), remaining, vault },
-            Err(code) => Preview { ok: false, code: Some(code.into()), needs_approval: code == errors::NEEDS_APPROVAL,
-                                   rein_id: Some(id), remaining, vault },
+            Ok(_) => Preview {
+                ok: true,
+                code: None,
+                needs_approval: false,
+                rein_id: Some(id),
+                remaining,
+                vault,
+            },
+            Err(code) => Preview {
+                ok: false,
+                code: Some(code.into()),
+                needs_approval: code == errors::NEEDS_APPROVAL,
+                rein_id: Some(id),
+                remaining,
+                vault,
+            },
         }
     }
 

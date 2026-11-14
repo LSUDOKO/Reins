@@ -1,10 +1,14 @@
 //! tUSD: a NEP-141 test stablecoin for Reins token budgets on testnet. 6 decimals, open
 //! faucet (`mint` up to 1,000 tUSD per call to yourself). Testnet only; it has no value.
 use near_contract_standards::fungible_token::core::FungibleTokenCore;
-use near_contract_standards::fungible_token::metadata::{FungibleTokenMetadata, FungibleTokenMetadataProvider, FT_METADATA_SPEC};
+use near_contract_standards::fungible_token::metadata::{
+    FungibleTokenMetadata, FungibleTokenMetadataProvider, FT_METADATA_SPEC,
+};
 use near_contract_standards::fungible_token::resolver::FungibleTokenResolver;
 use near_contract_standards::fungible_token::FungibleToken;
-use near_contract_standards::storage_management::{StorageBalance, StorageBalanceBounds, StorageManagement};
+use near_contract_standards::storage_management::{
+    StorageBalance, StorageBalanceBounds, StorageManagement,
+};
 use near_sdk::json_types::U128;
 use near_sdk::{env, near, require, AccountId, NearToken, PanicOnDefault, PromiseOrValue};
 
@@ -20,18 +24,28 @@ pub struct Contract {
 impl Contract {
     #[init]
     pub fn new() -> Self {
-        Self { token: FungibleToken::new(b"t".to_vec()) }
+        Self {
+            token: FungibleToken::new(b"t".to_vec()),
+        }
     }
 
     /// Faucet: mint up to 1,000 tUSD to the caller, registering them if needed.
     pub fn mint(&mut self, amount: U128) {
-        require!(amount.0 > 0 && amount.0 <= FAUCET_MAX, "mint 1..=1000 tUSD per call");
+        require!(
+            amount.0 > 0 && amount.0 <= FAUCET_MAX,
+            "mint 1..=1000 tUSD per call"
+        );
         let who = env::predecessor_account_id();
         if !self.token.accounts.contains_key(&who) {
             self.token.internal_register_account(&who);
         }
         self.token.internal_deposit(&who, amount.0);
-        near_contract_standards::fungible_token::events::FtMint { owner_id: &who, amount: amount.into(), memo: Some("faucet") }.emit();
+        near_contract_standards::fungible_token::events::FtMint {
+            owner_id: &who,
+            amount: amount.into(),
+            memo: Some("faucet"),
+        }
+        .emit();
     }
 }
 
@@ -43,7 +57,13 @@ impl FungibleTokenCore for Contract {
     }
 
     #[payable]
-    fn ft_transfer_call(&mut self, receiver_id: AccountId, amount: U128, memo: Option<String>, msg: String) -> PromiseOrValue<U128> {
+    fn ft_transfer_call(
+        &mut self,
+        receiver_id: AccountId,
+        amount: U128,
+        memo: Option<String>,
+        msg: String,
+    ) -> PromiseOrValue<U128> {
         self.token.ft_transfer_call(receiver_id, amount, memo, msg)
     }
 
@@ -59,15 +79,25 @@ impl FungibleTokenCore for Contract {
 #[near]
 impl FungibleTokenResolver for Contract {
     #[private]
-    fn ft_resolve_transfer(&mut self, sender_id: AccountId, receiver_id: AccountId, amount: U128) -> U128 {
-        self.token.ft_resolve_transfer(sender_id, receiver_id, amount)
+    fn ft_resolve_transfer(
+        &mut self,
+        sender_id: AccountId,
+        receiver_id: AccountId,
+        amount: U128,
+    ) -> U128 {
+        self.token
+            .ft_resolve_transfer(sender_id, receiver_id, amount)
     }
 }
 
 #[near]
 impl StorageManagement for Contract {
     #[payable]
-    fn storage_deposit(&mut self, account_id: Option<AccountId>, registration_only: Option<bool>) -> StorageBalance {
+    fn storage_deposit(
+        &mut self,
+        account_id: Option<AccountId>,
+        registration_only: Option<bool>,
+    ) -> StorageBalance {
         self.token.storage_deposit(account_id, registration_only)
     }
 

@@ -20,7 +20,11 @@ pub const TRANSFER_GAS: u64 = 21_000;
 pub const MAX_FEE_PER_GAS: u128 = 1_000_000_000_000;
 
 pub fn is_evm_address(s: &str) -> bool {
-    s.len() == 42 && s.starts_with("0x") && s[2..].chars().all(|c| c.is_ascii_digit() || ('a'..='f').contains(&c))
+    s.len() == 42
+        && s.starts_with("0x")
+        && s[2..]
+            .chars()
+            .all(|c| c.is_ascii_digit() || ('a'..='f').contains(&c))
 }
 
 pub fn hex(bytes: &[u8]) -> String {
@@ -28,7 +32,10 @@ pub fn hex(bytes: &[u8]) -> String {
 }
 
 fn unhex(s: &str) -> Vec<u8> {
-    (0..s.len()).step_by(2).map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap()).collect()
+    (0..s.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap())
+        .collect()
 }
 
 // ---- minimal RLP ----------------------------------------------------------------------
@@ -37,7 +44,11 @@ fn rlp_len(prefix_short: u8, prefix_long: u8, len: usize) -> Vec<u8> {
     if len <= 55 {
         vec![prefix_short + len as u8]
     } else {
-        let be: Vec<u8> = (len as u64).to_be_bytes().into_iter().skip_while(|b| *b == 0).collect();
+        let be: Vec<u8> = (len as u64)
+            .to_be_bytes()
+            .into_iter()
+            .skip_while(|b| *b == 0)
+            .collect();
         let mut out = vec![prefix_long + be.len() as u8];
         out.extend(be);
         out
@@ -54,7 +65,11 @@ pub fn rlp_bytes(b: &[u8]) -> Vec<u8> {
 }
 
 pub fn rlp_uint(v: u128) -> Vec<u8> {
-    let be: Vec<u8> = v.to_be_bytes().into_iter().skip_while(|b| *b == 0).collect();
+    let be: Vec<u8> = v
+        .to_be_bytes()
+        .into_iter()
+        .skip_while(|b| *b == 0)
+        .collect();
     rlp_bytes(&be)
 }
 
@@ -66,7 +81,14 @@ pub fn rlp_list(items: &[Vec<u8>]) -> Vec<u8> {
 }
 
 /// Unsigned EIP-1559 transaction `0x02 || rlp([...])` for a plain value transfer.
-pub fn eip1559_unsigned(chain_id: u64, nonce: u64, max_priority: u128, max_fee: u128, to: &str, value: u128) -> Vec<u8> {
+pub fn eip1559_unsigned(
+    chain_id: u64,
+    nonce: u64,
+    max_priority: u128,
+    max_fee: u128,
+    to: &str,
+    value: u128,
+) -> Vec<u8> {
     let mut out = vec![0x02];
     out.extend(rlp_list(&[
         rlp_uint(chain_id as u128),
@@ -90,18 +112,33 @@ pub fn derivation_path(rein: ReinId) -> String {
 impl Reins {
     /// Agent method: pay `value` wei to `to` on the rein's EVM chain. Returns the MPC
     /// signature plus the exact transaction fields; anyone can then broadcast it.
-    pub fn pay_evm(&mut self, to: String, value: U128, nonce: U64, max_fee_per_gas: U128, max_priority_fee_per_gas: U128) -> Promise {
+    pub fn pay_evm(
+        &mut self,
+        to: String,
+        value: U128,
+        nonce: U64,
+        max_fee_per_gas: U128,
+        max_priority_fee_per_gas: U128,
+    ) -> Promise {
         let id = self.caller_rein();
         let rein = self.rein(id).clone();
-        let chain_id = rein.terms.evm_chain_id.unwrap_or_else(|| env::panic_str("not_an_evm_rein"));
+        let chain_id = rein
+            .terms
+            .evm_chain_id
+            .unwrap_or_else(|| env::panic_str("not_an_evm_rein"));
         let to = to.to_lowercase();
         require!(is_evm_address(&to), "to_must_be_0x_address");
         require!(max_fee_per_gas.0 <= MAX_FEE_PER_GAS, "fee_too_high");
-        require!(max_priority_fee_per_gas.0 <= max_fee_per_gas.0, "priority_fee_above_max_fee");
+        require!(
+            max_priority_fee_per_gas.0 <= max_fee_per_gas.0,
+            "priority_fee_above_max_fee"
+        );
         require!(nonce.0 >= rein.evm_nonce.0, "nonce_already_used");
         // The budget is charged for the value plus the most the fee could cost.
         let cost = value.0 + max_fee_per_gas.0 * TRANSFER_GAS as u128;
-        let receiver: AccountId = to.parse().unwrap_or_else(|_| env::panic_str("to_must_be_0x_address"));
+        let receiver: AccountId = to
+            .parse()
+            .unwrap_or_else(|_| env::panic_str("to_must_be_0x_address"));
         let at = now();
         if let Err(code) = self.check(id, &receiver, cost, false, at) {
             fail(code);
@@ -109,7 +146,14 @@ impl Reins {
         let chain = self.book(id, cost, at);
         self.reins.get_mut(&id).unwrap().evm_nonce = U64(nonce.0 + 1);
 
-        let unsigned = eip1559_unsigned(chain_id.0, nonce.0, max_priority_fee_per_gas.0, max_fee_per_gas.0, &to, value.0);
+        let unsigned = eip1559_unsigned(
+            chain_id.0,
+            nonce.0,
+            max_priority_fee_per_gas.0,
+            max_fee_per_gas.0,
+            &to,
+            value.0,
+        );
         let payload = env::keccak256(&unsigned);
         let path = derivation_path(id);
         let request = json!({ "request": { "payload_v2": { "Ecdsa": hex(&payload) }, "path": path, "domain_id": 0 } });
@@ -130,14 +174,26 @@ impl Reins {
 
     /// Settles a Chain Signatures request: returns the signature, or restores the budget.
     #[private]
-    pub fn on_signed(&mut self, chain: Vec<ReinId>, owner: AccountId, to: String, cost: U128, tx: Value) -> PromiseOrValue<Value> {
-        let sig = env::promise_result_checked(0, 2048).ok().and_then(|b| near_sdk::serde_json::from_slice::<Value>(&b).ok());
+    pub fn on_signed(
+        &mut self,
+        chain: Vec<ReinId>,
+        owner: AccountId,
+        to: String,
+        cost: U128,
+        tx: Value,
+    ) -> PromiseOrValue<Value> {
+        let sig = env::promise_result_checked(0, 2048)
+            .ok()
+            .and_then(|b| near_sdk::serde_json::from_slice::<Value>(&b).ok());
         let leaf = chain[0];
         match sig {
             Some(signature) => {
                 self.evm_signatures += 1;
-                emit("evm_payment_signed", json!({ "rein_id": leaf, "owner": owner, "to": to, "cost": cost,
-                                                   "tx": tx, "signature": signature }));
+                emit(
+                    "evm_payment_signed",
+                    json!({ "rein_id": leaf, "owner": owner, "to": to, "cost": cost,
+                                                   "tx": tx, "signature": signature }),
+                );
                 PromiseOrValue::Value(json!({ "signature": signature, "tx": tx }))
             }
             None => {
@@ -145,7 +201,10 @@ impl Reins {
                 if let Some(r) = self.reins.get_mut(&leaf) {
                     r.evm_nonce = U64(r.evm_nonce.0.saturating_sub(1));
                 }
-                emit("evm_payment_failed", json!({ "rein_id": leaf, "owner": owner, "to": to, "cost": cost }));
+                emit(
+                    "evm_payment_failed",
+                    json!({ "rein_id": leaf, "owner": owner, "to": to, "cost": cost }),
+                );
                 PromiseOrValue::Value(Value::Null)
             }
         }
@@ -166,7 +225,10 @@ mod rlp_tests {
         assert_eq!(rlp_uint(15), vec![0x0f]);
         assert_eq!(rlp_uint(1024), vec![0x82, 0x04, 0x00]);
         assert_eq!(rlp_bytes(b"dog"), vec![0x83, b'd', b'o', b'g']);
-        assert_eq!(rlp_list(&[rlp_bytes(b"cat"), rlp_bytes(b"dog")]), vec![0xc8, 0x83, b'c', b'a', b't', 0x83, b'd', b'o', b'g']);
+        assert_eq!(
+            rlp_list(&[rlp_bytes(b"cat"), rlp_bytes(b"dog")]),
+            vec![0xc8, 0x83, b'c', b'a', b't', 0x83, b'd', b'o', b'g']
+        );
         assert_eq!(rlp_list(&[]), vec![0xc0]);
         let long = vec![0xaa; 56];
         assert_eq!(&rlp_bytes(&long)[..2], &[0xb8, 56]);
@@ -174,7 +236,14 @@ mod rlp_tests {
 
     #[test]
     fn eip1559_layout() {
-        let tx = eip1559_unsigned(84532, 0, 1, 2, "0x1111111111111111111111111111111111111111", 3);
+        let tx = eip1559_unsigned(
+            84532,
+            0,
+            1,
+            2,
+            "0x1111111111111111111111111111111111111111",
+            3,
+        );
         assert_eq!(tx[0], 0x02);
         // list header, chain id 84532 = 0x014a34 (3 bytes)
         assert_eq!(&tx[2..6], &[0x83, 0x01, 0x4a, 0x34]);

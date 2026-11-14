@@ -1,8 +1,8 @@
 //! Unit tests. Run with `cargo test -p reins`; no network, no sandbox.
 use super::*;
 use near_sdk::test_utils::VMContextBuilder;
-use near_sdk::{testing_env, CurveType, PromiseResult, RuntimeFeesConfig};
 use near_sdk::test_vm_config;
+use near_sdk::{testing_env, CurveType, PromiseResult, RuntimeFeesConfig};
 
 const NEAR: u128 = 1_000_000_000_000_000_000_000_000;
 const SEC: u64 = 1_000_000_000;
@@ -71,7 +71,13 @@ fn callback(result: PromiseResult, at: u64) {
         .signer_account_id(owner())
         .block_timestamp(at)
         .account_balance(NearToken::from_near(100));
-    testing_env!(c.build(), test_vm_config(), RuntimeFeesConfig::test(), Default::default(), vec![result]);
+    testing_env!(
+        c.build(),
+        test_vm_config(),
+        RuntimeFeesConfig::test(),
+        Default::default(),
+        vec![result]
+    );
 }
 
 fn terms(budget: u128, cap: u128) -> Terms {
@@ -470,7 +476,10 @@ fn revoke_all_is_a_panic_button() {
     c.create_rein(pk(2), "second".into(), terms(NEAR, NEAR / 2), None);
     as_owner(1, T0);
     assert_eq!(c.revoke_all(), 2);
-    assert!(c.reins_of(owner()).iter().all(|r| r.status == Status::Revoked));
+    assert!(c
+        .reins_of(owner())
+        .iter()
+        .all(|r| r.status == Status::Revoked));
 }
 
 // ---- shared blocklist -----------------------------------------------------------------
@@ -540,7 +549,14 @@ fn failed_transfer_restores_budget_and_vault() {
     let vault = c.vault_of(owner()).0;
     pay(&mut c, 1, acc("ghost.testnet"), NEAR / 4, T0);
     callback(PromiseResult::Failed, T0);
-    let ok = c.on_paid(vec![1], owner(), acc("ghost.testnet"), U128(NEAR / 4), None, None);
+    let ok = c.on_paid(
+        vec![1],
+        owner(),
+        acc("ghost.testnet"),
+        U128(NEAR / 4),
+        None,
+        None,
+    );
     assert!(matches!(ok, near_sdk::PromiseOrValue::Value(false)));
     assert_eq!(spent(&c, 1), 0);
     assert_eq!(c.get_rein(1).unwrap().uses, 0);
@@ -563,8 +579,14 @@ fn settled_transfer_counts_the_pair() {
 fn preview_agrees_with_pay() {
     let mut c = reported();
     assert_eq!(preview_code(&c, 1, shop(), NEAR / 4), None);
-    assert_eq!(preview_code(&c, 1, shop(), NEAR), Some("over_per_tx_cap".into()));
-    assert_eq!(preview_code(&c, 1, scam(), 1), Some("receiver_blocked".into()));
+    assert_eq!(
+        preview_code(&c, 1, shop(), NEAR),
+        Some("over_per_tx_cap".into())
+    );
+    assert_eq!(
+        preview_code(&c, 1, scam(), 1),
+        Some("receiver_blocked".into())
+    );
     assert_eq!(preview_code(&c, 9, shop(), 1), Some("unknown_key".into()));
     pay(&mut c, 1, shop(), NEAR / 2, T0);
     pay(&mut c, 1, shop(), NEAR / 2, T0);
@@ -588,13 +610,20 @@ fn as_holder(holder: AccountId, k: u8, at: u64) {
 fn sub_account_agent_pays_from_the_owner_vault() {
     let mut c = setup();
     as_owner(NEAR / 10, T0);
-    let id = c.create_rein(pk(7), "research".into(), terms(NEAR, NEAR / 2), Some(acc("research.alice.testnet")));
+    let id = c.create_rein(
+        pk(7),
+        "research".into(),
+        terms(NEAR, NEAR / 2),
+        Some(acc("research.alice.testnet")),
+    );
     let v = c.vault_of(owner()).0;
     as_holder(acc("research.alice.testnet"), 7, T0);
     let _ = c.pay(shop(), U128(NEAR / 4), None);
     assert_eq!(spent(&c, id), NEAR / 4);
     assert_eq!(c.vault_of(owner()).0, v - NEAR / 4);
-    assert!(c.rein_for_key(acc("research.alice.testnet"), pk(7)).is_some());
+    assert!(c
+        .rein_for_key(acc("research.alice.testnet"), pk(7))
+        .is_some());
 }
 
 #[test]
@@ -602,7 +631,12 @@ fn sub_account_agent_pays_from_the_owner_vault() {
 fn agent_account_must_be_a_sub_account_of_the_owner() {
     let mut c = setup();
     as_owner(NEAR / 10, T0);
-    c.create_rein(pk(7), "x".into(), terms(NEAR, NEAR / 2), Some(acc("research.mallory.testnet")));
+    c.create_rein(
+        pk(7),
+        "x".into(),
+        terms(NEAR, NEAR / 2),
+        Some(acc("research.mallory.testnet")),
+    );
 }
 
 #[test]
@@ -610,7 +644,12 @@ fn agent_account_must_be_a_sub_account_of_the_owner() {
 fn sub_account_key_does_not_work_from_the_owner_account() {
     let mut c = setup();
     as_owner(NEAR / 10, T0);
-    c.create_rein(pk(7), "x".into(), terms(NEAR, NEAR / 2), Some(acc("research.alice.testnet")));
+    c.create_rein(
+        pk(7),
+        "x".into(),
+        terms(NEAR, NEAR / 2),
+        Some(acc("research.alice.testnet")),
+    );
     pay(&mut c, 7, shop(), 1, T0);
 }
 
@@ -623,7 +662,10 @@ fn usd() -> AccountId {
 fn token_rein() -> Reins {
     let mut c = setup();
     let mut ctx = VMContextBuilder::new();
-    ctx.current_account_id(contract_id()).predecessor_account_id(usd()).signer_account_id(owner()).block_timestamp(T0);
+    ctx.current_account_id(contract_id())
+        .predecessor_account_id(usd())
+        .signer_account_id(owner())
+        .block_timestamp(T0);
     testing_env!(ctx.build());
     let _ = c.ft_on_transfer(owner(), U128(50_000_000), String::new());
     let mut t = terms(10_000_000, 5_000_000);
@@ -670,7 +712,9 @@ fn token_rein_limits_are_in_token_units() {
 fn token_deposit_rejects_unknown_messages() {
     let mut c = setup();
     let mut ctx = VMContextBuilder::new();
-    ctx.current_account_id(contract_id()).predecessor_account_id(usd()).signer_account_id(owner());
+    ctx.current_account_id(contract_id())
+        .predecessor_account_id(usd())
+        .signer_account_id(owner());
     testing_env!(ctx.build());
     let _ = c.ft_on_transfer(owner(), U128(1), "swap".into());
 }
@@ -696,11 +740,21 @@ fn evm_payment_books_value_plus_worst_case_fee_and_advances_the_nonce() {
     let mut c = evm_rein();
     let near_vault = c.vault_of(owner()).0;
     as_agent(4, T0);
-    let _ = c.pay_evm(MERCHANT_EVM.into(), U128(ETH / 1000), U64(0), U128(2 * GWEI), U128(GWEI));
+    let _ = c.pay_evm(
+        MERCHANT_EVM.into(),
+        U128(ETH / 1000),
+        U64(0),
+        U128(2 * GWEI),
+        U128(GWEI),
+    );
     let r = c.rein_for_key(owner(), pk(4)).unwrap();
     assert_eq!(r.spent.0, ETH / 1000 + 2 * GWEI * 21_000);
     assert_eq!(r.evm_nonce.0, 1);
-    assert_eq!(c.vault_of(owner()).0, near_vault, "cross-chain spend never touches the NEAR vault");
+    assert_eq!(
+        c.vault_of(owner()).0,
+        near_vault,
+        "cross-chain spend never touches the NEAR vault"
+    );
 }
 
 #[test]
@@ -708,7 +762,13 @@ fn evm_payment_books_value_plus_worst_case_fee_and_advances_the_nonce() {
 fn evm_payment_respects_the_merchant_list() {
     let mut c = evm_rein();
     as_agent(4, T0);
-    let _ = c.pay_evm("0x2222222222222222222222222222222222222222".into(), U128(1), U64(0), U128(GWEI), U128(GWEI));
+    let _ = c.pay_evm(
+        "0x2222222222222222222222222222222222222222".into(),
+        U128(1),
+        U64(0),
+        U128(GWEI),
+        U128(GWEI),
+    );
 }
 
 #[test]
@@ -716,7 +776,13 @@ fn evm_payment_respects_the_merchant_list() {
 fn evm_payment_respects_the_cap() {
     let mut c = evm_rein();
     as_agent(4, T0);
-    let _ = c.pay_evm(MERCHANT_EVM.into(), U128(ETH / 100), U64(0), U128(GWEI), U128(GWEI));
+    let _ = c.pay_evm(
+        MERCHANT_EVM.into(),
+        U128(ETH / 100),
+        U64(0),
+        U128(GWEI),
+        U128(GWEI),
+    );
 }
 
 #[test]
@@ -734,7 +800,13 @@ fn evm_nonce_cannot_be_reused() {
 fn evm_fee_is_capped() {
     let mut c = evm_rein();
     as_agent(4, T0);
-    let _ = c.pay_evm(MERCHANT_EVM.into(), U128(1), U64(0), U128(5_000 * GWEI), U128(GWEI));
+    let _ = c.pay_evm(
+        MERCHANT_EVM.into(),
+        U128(1),
+        U64(0),
+        U128(5_000 * GWEI),
+        U128(GWEI),
+    );
 }
 
 #[test]
@@ -767,11 +839,23 @@ fn evm_rein_merchants_must_be_addresses() {
 fn failed_signature_restores_budget_and_nonce() {
     let mut c = evm_rein();
     as_agent(4, T0);
-    let _ = c.pay_evm(MERCHANT_EVM.into(), U128(ETH / 1000), U64(0), U128(GWEI), U128(GWEI));
+    let _ = c.pay_evm(
+        MERCHANT_EVM.into(),
+        U128(ETH / 1000),
+        U64(0),
+        U128(GWEI),
+        U128(GWEI),
+    );
     let id = c.rein_for_key(owner(), pk(4)).unwrap().id;
     callback(PromiseResult::Failed, T0);
     let cost = ETH / 1000 + GWEI * 21_000;
-    let _ = c.on_signed(vec![id], owner(), MERCHANT_EVM.into(), U128(cost), near_sdk::serde_json::json!({}));
+    let _ = c.on_signed(
+        vec![id],
+        owner(),
+        MERCHANT_EVM.into(),
+        U128(cost),
+        near_sdk::serde_json::json!({}),
+    );
     let r = c.get_rein(id).unwrap();
     assert_eq!(r.spent.0, 0);
     assert_eq!(r.evm_nonce.0, 0);
