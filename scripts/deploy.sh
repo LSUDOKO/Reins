@@ -33,5 +33,6 @@ for acc in "$CONTRACT" "$MERCHANT"; do
   tcall "$OWNER" storage_deposit "{\"account_id\":\"$acc\"}" '0.00125 NEAR'
 done
 tcall "$OWNER" mint '{"amount":"500000000"}'
+call "$OWNER" register_token "{\"token\":\"$TOKEN\"}" '0.01 NEAR'
 tcall "$OWNER" ft_transfer_call "{\"receiver_id\":\"$CONTRACT\",\"amount\":\"200000000\",\"msg\":\"\"}" '1 yoctoNEAR'
 echo "Deployed reins to $CONTRACT, tUSD to $TOKEN"

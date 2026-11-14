@@ -153,7 +153,11 @@ function TokenVaultSection({ owner, wallet, flash }: { owner: string; wallet: Wa
     setErr(null);
     try {
       const units = toUnits(amount, "tUSD");
-      if (method === "deposit") await wallet.callOn(TUSD, "ft_transfer_call", { receiver_id: CONTRACT_ID, amount: units, msg: "" }, 1n);
+      if (method === "deposit") {
+        // The contract refunds tokens it was not told to hold; register_token is idempotent.
+        await wallet.call("register_token", { token: TUSD }, "0.01");
+        await wallet.callOn(TUSD, "ft_transfer_call", { receiver_id: CONTRACT_ID, amount: units, msg: "" }, 1n);
+      }
       else await wallet.call("withdraw_token", { token: TUSD, amount: units });
       flash(method === "deposit" ? `Deposited ${amount} tUSD` : `Withdrew ${amount} tUSD`);
       await load();

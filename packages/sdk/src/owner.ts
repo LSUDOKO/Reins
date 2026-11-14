@@ -36,6 +36,9 @@ export class OwnerClient {
     return sendCall(this.account, this.contractId, methodName, args, BigInt(GAS), BigInt(deposit));
   }
 
+  /** Opt in to holding a NEP-141 token; unregistered token deposits are refunded. */
+  registerToken(token: string) { return this.call("register_token", { token }, toYocto("0.01")); }
+
   deposit(near: string) { return this.call<string>("deposit", {}, toYocto(near)); }
   withdraw(near: string) { return this.call("withdraw", { amount: toYocto(near) }); }
 
