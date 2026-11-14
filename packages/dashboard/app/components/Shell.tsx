@@ -1,9 +1,9 @@
 "use client";
 
 // The shell: a quiet left rail instead of a navbar. Wordmark up top (and the
-// back affordance, on card pages); the bottom stack carries the network dot,
+// back affordance, on rein pages); the bottom stack carries the network dot,
 // the theme toggle, and the avatar. The avatar menu opens rightward; the
-// wallet-level danger verb (nuke) lives there and walks the DangerModal
+// owner-level danger verb (revoke all) lives there and walks the DangerModal
 // staircase; the modal is mounted outside the menu so it survives the menu
 // closing. The content column owns the rest of the viewport.
 //
@@ -17,21 +17,18 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
-import { erc20Abi, formatUnits, type Address } from "viem";
-import { useExportWallet } from "@privy-io/react-auth";
 import { api } from "@/lib/api";
-import { CHAIN_NAME, publicClient, USDC_BASE, WETH_BASE, txUrl } from "@/lib/chain";
-import type { useRemit } from "../useRemit";
+import { CHAIN_NAME, CONTRACT_ID, txUrl } from "@/lib/chain";
+import type { Wallet } from "@/lib/near";
 import { copyText, IconCheck, IconCopy, shortHex } from "./ui";
 import { ThemeToggle } from "./Theme";
 import { Logo } from "./Logo";
 import { DangerModal, type DangerPhase } from "./Confirm";
 
-type Remit = ReturnType<typeof useRemit>;
 
 export function Cockpit({
   back,
-  remit,
+  wallet,
   refresh,
   onLogout,
   address,
@@ -40,29 +37,26 @@ export function Cockpit({
   children,
 }: {
   back?: { href: string; label: string };
-  remit: Remit;
+  wallet: Wallet;
   refresh: () => void | Promise<void>;
   onLogout?: () => void;
   address?: string;
-  nukeable?: boolean; // wallet has live cards: the nuke verb shows in the avatar menu
-  aggregate?: string; // the wallet-level fact line ("2 live cards · $30.00 / wk delegated")
+  nukeable?: boolean; // the signed-in owner has live reins: revoke-all shows in the avatar menu
+  aggregate?: string; // the owner-level fact line ("2 live reins · Ⓝ1.50 / day on reins")
   children: React.ReactNode;
 }) {
   const path = usePathname();
-  const here = (p: string) => (p === "/app" ? path === "/app" || path?.startsWith("/card/") : path?.startsWith(p));
+  const here = (p: string) => (p === "/app" ? path?.startsWith("/app") || path?.startsWith("/rein") : path?.startsWith(p));
   return (
     <div className="app">
       <aside className="rail">
         <Logo href="/app" />
         <nav className="navlinks" aria-label="Sections">
           <Link className={`navlink${here("/app") ? " on" : ""}`} href="/app">
-            Cards
+            Reins
           </Link>
-          <Link className={`navlink${here("/keeperhub") ? " on" : ""}`} href="/keeperhub">
-            Execution
-          </Link>
-          <Link className={`navlink${here("/settings") ? " on" : ""}`} href="/settings">
-            Settings
+          <Link className={`navlink${here("/guard") ? " on" : ""}`} href="/guard">
+            Guard
           </Link>
           <Link className={`navlink${here("/docs") ? " on" : ""}`} href="/docs">
             Docs
@@ -89,7 +83,7 @@ export function Cockpit({
           <ProfileMenu
             address={address}
             onLogout={onLogout}
-            remit={remit}
+            wallet={wallet}
             refresh={refresh}
             nukeable={nukeable}
             aggregate={aggregate}
@@ -101,20 +95,20 @@ export function Cockpit({
   );
 }
 
-// Avatar menu (rail bottom): account identity, sign out, and nuke. It kills
-// EVERY card, so it confirms through the destructive-action modal.
+// Avatar menu (rail bottom): the owner account, its vault, sign in / out, and
+// revoke-all. Revoke-all kills EVERY rein, so it confirms through the modal.
 
 function ProfileMenu({
   address,
   onLogout,
-  remit,
+  wallet,
   refresh,
   nukeable,
   aggregate,
 }: {
   address?: string;
   onLogout?: () => void;
-  remit: Remit;
+  wallet: Wallet;
   refresh: () => void | Promise<void>;
   nukeable: boolean;
   aggregate?: string;
@@ -124,60 +118,25 @@ function ProfileMenu({
   // the portal needs the document; the anchor pins the fixed menu to the avatar
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  // the wallet's holdings, read once per menu open (a balanceOf trio against Base) ·
-  // the last value holds across reopens so the figures never flash empty. USDC is
-  // the funding asset; ETH (native, gas) and WETH (the execute lane's swap output)
-  // round out what the wallet actually holds beyond the card's spend budget.
-  const [usdc, setUsdc] = useState<string | null>(null);
-  const [eth, setEth] = useState<string | null>(null);
-  const [weth, setWeth] = useState<string | null>(null);
+  // the owner's vault, read once per menu open · held across reopens
+  const [vault, setVault] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  // Privy's secure export: opens a modal on a separate-domain iframe where the
-  // user can copy their key · remit's app never reads it (self-custody escape hatch)
-  const { exportWallet } = useExportWallet();
-  // a same-tab account switch must never show the previous wallet's figures
-  useEffect(() => {
-    setUsdc(null);
-    setEth(null);
-    setWeth(null);
-  }, [address]);
+  useEffect(() => setVault(null), [address]);
   useEffect(() => {
     if (!open || !address) return;
     let live = true;
-    const a = address as Address;
-    publicClient
-      .readContract({ address: USDC_BASE, abi: erc20Abi, functionName: "balanceOf", args: [a] })
+    api
+      .vault(address)
       .then((v) => {
-        if (live) setUsdc(formatUnits(v, 6));
-      })
-      .catch(() => {});
-    publicClient
-      .getBalance({ address: a })
-      .then((v) => {
-        if (live) setEth(formatUnits(v, 18));
-      })
-      .catch(() => {});
-    publicClient
-      .readContract({ address: WETH_BASE, abi: erc20Abi, functionName: "balanceOf", args: [a] })
-      .then((v) => {
-        if (live) setWeth(formatUnits(v, 18));
+        if (live) setVault(v);
       })
       .catch(() => {});
     return () => {
       live = false;
     };
   }, [open, address]);
-  const bal = usdc === null ? null : Number(usdc);
-  const balFig = bal === null ? "–" : bal > 0 && bal < 0.01 ? "<$0.01" : `$${bal.toFixed(2)}`;
-  // token readout: up to 6 decimals, trailing zeros trimmed · "0" when empty,
-  // "<0.000001" for dust that would otherwise render as zero
-  const tokFig = (s: string | null) => {
-    if (s === null) return "–";
-    const n = Number(s);
-    if (n === 0) return "0";
-    if (n < 0.000001) return "<0.000001";
-    return n.toFixed(6).replace(/\.?0+$/, "");
-  };
+  const bal = vault === null ? null : Number(vault);
+  const balFig = bal === null ? "–" : bal > 0 && bal < 0.01 ? "<Ⓝ0.01" : `Ⓝ${bal.toFixed(2)}`;
   const btnRef = useRef<HTMLButtonElement>(null);
   const [anchor, setAnchor] = useState<React.CSSProperties | null>(null);
   // the anchor is captured at open; a resize would detach the menu from the avatar
@@ -245,28 +204,14 @@ function ProfileMenu({
                   {address && (
                     <div className="prowallet">
                       <div className="probal">
-                        <span className="probalfig" data-testid="wallet-balance">
+                        <span className="probalfig" data-testid="vault-balance">
                           {balFig}
                         </span>
-                        <span className="proballbl">USDC on {CHAIN_NAME}</span>
-                      </div>
-                      <div className="proassets">
-                        <span className="proasset">
-                          <span className="proassetfig" data-testid="wallet-eth">
-                            {tokFig(eth)}
-                          </span>
-                          ETH
-                        </span>
-                        <span className="proasset">
-                          <span className="proassetfig" data-testid="wallet-weth">
-                            {tokFig(weth)}
-                          </span>
-                          WETH
-                        </span>
+                        <span className="proballbl">in the vault on {CHAIN_NAME}</span>
                       </div>
                       <button
                         className={`proaddr${copied ? " done" : ""}`}
-                        title="Copy your wallet address"
+                        title="Copy the owner account"
                         data-testid="wallet-address"
                         onClick={async () => {
                           if (!(await copyText(address))) return;
@@ -277,29 +222,23 @@ function ProfileMenu({
                         <span className="proaddrtext">{address}</span>
                         {copied ? <IconCheck /> : <IconCopy />}
                       </button>
-                      <p className="pronote">Send USDC on {CHAIN_NAME} to this address to fund your cards</p>
+                      <p className="pronote">Reins pay out of this vault, held by {CONTRACT_ID} · only a full-access key can withdraw</p>
                     </div>
                   )}
-                  {address && (
-                    <div className="proexport">
-                      <button
-                        className="proitem"
-                        disabled={!remit.embeddedReady}
-                        onClick={() => {
-                          setOpen(false);
-                          // Privy opens its own secure modal; a rejection here only
-                          // means export is disabled / the wallet isn't ready, so
-                          // swallow it rather than leak an unhandled rejection
-                          void exportWallet({ address }).catch(() => {});
-                        }}
-                        data-testid="export-key"
-                      >
-                        Export Private Key
-                      </button>
-                      <p className="pronote">Reveals your key in Privy&apos;s secure window to import elsewhere. KeeperCard never sees it.</p>
-                    </div>
+                  {!wallet.accountId && (
+                    <button
+                      className="proitem"
+                      disabled={!wallet.ready}
+                      onClick={() => {
+                        setOpen(false);
+                        wallet.signIn();
+                      }}
+                      data-testid="login"
+                    >
+                      Sign In With NEAR
+                    </button>
                   )}
-                  {onLogout && (
+                  {onLogout && wallet.accountId && (
                     <button
                       className="proitem"
                       onClick={() => {
@@ -315,16 +254,15 @@ function ProfileMenu({
                     <div className="prodanger">
                       <button
                         className="proitem danger"
-                        disabled={!remit.embeddedReady}
                         onClick={() => {
                           setOpen(false);
                           setNukeOpen(true);
                         }}
                         data-testid="nuke"
                       >
-                        Nuke All Cards
+                        Revoke Every Rein
                       </button>
-                      <p className="pronote">One on-chain tx revokes every card and sub-card this wallet ever issued</p>
+                      <p className="pronote">One transaction revokes every rein and sub-rein this account owns</p>
                     </div>
                   )}
                 </motion.div>
@@ -333,28 +271,26 @@ function ProfileMenu({
           </AnimatePresence>,
           document.body,
         )}
-      <NukeModal remit={remit} onNuked={refresh} open={nukeOpen} onClose={() => setNukeOpen(false)} />
+      <NukeModal wallet={wallet} onNuked={refresh} open={nukeOpen} onClose={() => setNukeOpen(false)} />
     </div>
   );
 }
 
-// Cascade revoke (NonceEnforcer bump): ONE on-chain tx kills every card and
-// sub-card this wallet ever issued. Same client-signed flow as v1, now walked
-// through the shared destructive-action modal.
+// Panic button: revoke_all kills every rein and sub-rein the owner has, in
+// one transaction signed by the owner's wallet.
 
 function NukeModal({
-  remit,
+  wallet,
   onNuked,
   open,
   onClose,
 }: {
-  remit: Remit;
+  wallet: Wallet;
   onNuked: () => void | Promise<void>;
   open: boolean;
   onClose: () => void;
 }) {
   const [phase, setPhase] = useState<DangerPhase>("confirm");
-  const [stage, setStage] = useState<"signing" | "submitting">("signing");
   const [tx, setTx] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -362,12 +298,7 @@ function NukeModal({
     setErr(null);
     try {
       setPhase("busy");
-      setStage("signing");
-      const prep = await api.prepareNuke();
-      const signature = await remit.signDelegation(prep.delegation);
-      setStage("submitting");
-      const fin = await api.finalizeNuke(prep.prepare_id, signature);
-      setTx(fin.tx);
+      setTx(await wallet.call("revoke_all", {}));
       setPhase("done");
       await onNuked();
     } catch (e) {
@@ -381,14 +312,14 @@ function NukeModal({
       open={open}
       phase={phase}
       prefix="nuke"
-      title="Nuke every card?"
-      body="One on-chain transaction revokes every card and sub-card this wallet ever issued. Agents holding them lose all authority, permanently."
-      confirmLabel="Yes, Nuke Everything"
-      busyNote={stage === "signing" ? "Signing with your wallet…" : "One tx, killing the whole tree…"}
-      doneTitle="Every card is dead"
+      title="Revoke every rein?"
+      body="One transaction revokes every rein and sub-rein this account owns. Agents holding their keys can no longer pay, permanently."
+      confirmLabel="Yes, Revoke Everything"
+      busyNote="One tx, killing the whole tree…"
+      doneTitle="Every rein is dead"
       doneNote={
         <>
-          Nuked. The whole tree is revoked on-chain.{" "}
+          Done. The whole tree is revoked on-chain.{" "}
           {tx && (
             <a href={txUrl(tx)} target="_blank" rel="noreferrer" style={{ color: "var(--accent)" }}>
               {shortHex(tx, 10, 0)}
@@ -396,7 +327,7 @@ function NukeModal({
           )}
         </>
       }
-      errorNote={err ? `Nuke failed: ${err}` : undefined}
+      errorNote={err ? `Revoke-all failed: ${err}` : undefined}
       onConfirm={go}
       onClose={() => {
         onClose();
