@@ -1,0 +1,77 @@
+test evm::rlp_tests::eip1559_layout ... ok
+test evm::rlp_tests::rlp_matches_known_vectors ... ok
+test tests::agent_key_cannot_raise_its_own_limits - should panic ... ok
+test tests::agent_pays_within_limits_and_vault_is_debited ... ok
+test tests::agent_key_cannot_unfreeze - should panic ... ok
+test tests::agent_key_cannot_override_blocklist - should panic ... ok
+test tests::agent_account_must_be_a_sub_account_of_the_owner - should panic ... ok
+test tests::audit_c1_evm_rein_cannot_request_a_near_approval - should panic ... ok
+test tests::agent_key_cannot_withdraw - should panic ... ok
+test tests::agent_cannot_mint_a_bigger_subrein - should panic ... ok
+test tests::audit_h1_unregistered_token_deposit_is_refunded_without_state ... ok
+test tests::audit_l1_parent_approval_threshold_binds_children - should panic ... ok
+test tests::above_threshold_needs_approval - should panic ... ok
+test tests::approval_is_only_for_above_threshold_payments - should panic ... ok
+test tests::agent_key_cannot_approve_its_own_request - should panic ... ok
+test tests::audit_c2_rein_currency_cannot_change - should panic ... ok
+test tests::audit_c2_refund_goes_to_the_booked_currency ... ok
+test tests::bond_is_stored_net_of_storage ... ok
+test tests::audit_h1_zero_token_deposit_is_rejected - should panic ... ok
+test tests::create_rein_without_deposit_fails - should panic ... ok
+test tests::audit_l4_revoked_key_cannot_be_bound_again - should panic ... ok
+test tests::audit_m2_owner_can_reset_the_evm_nonce ... ok
+test tests::budget_window_resets_after_the_period ... ok
+test tests::audit_m1_refund_does_not_top_up_a_newer_window ... ok
+test tests::cannot_pay_the_contract_itself - should panic ... ok
+test tests::audit_m2_evm_nonce_must_be_the_next_one - should panic ... ok
+test tests::audit_m2_late_failure_does_not_rewind_a_newer_nonce ... ok
+test tests::budget_is_enforced_across_payments - should panic ... ok
+test tests::call_relayed_through_another_contract_is_rejected - should panic ... ok
+test tests::audit_l3_freeze_applies_to_the_subtree ... ok
+test tests::depth_is_bounded - should panic ... ok
+test tests::evm_fee_is_capped - should panic ... ok
+test tests::evm_payment_respects_the_cap - should panic ... ok
+test tests::evm_payment_books_value_plus_worst_case_fee_and_advances_the_nonce ... ok
+test tests::evm_nonce_cannot_be_reused - should panic ... ok
+test tests::evm_payment_respects_the_merchant_list - should panic ... ok
+test tests::evm_rein_cannot_pay_near - should panic ... ok
+test tests::failed_signature_restores_budget_and_nonce ... ok
+test tests::frozen_rein_cannot_pay - should panic ... ok
+test tests::failed_transfer_restores_budget_and_vault ... ok
+test tests::near_rein_cannot_sign_evm_payments - should panic ... ok
+test tests::failed_token_transfer_restores_the_token_vault ... ok
+test tests::evm_rein_merchants_must_be_addresses - should panic ... ok
+test tests::max_uses_is_enforced - should panic ... ok
+test tests::expiry_is_enforced - should panic ... ok
+test tests::owner_approval_books_the_payment ... ok
+test tests::merchant_allowlist_is_enforced - should panic ... ok
+test tests::per_tx_cap_is_enforced - should panic ... ok
+test tests::report_needs_evidence_hash - should panic ... ok
+test tests::owner_can_allow_a_reported_receiver ... ok
+test tests::storage_is_charged_to_the_vault ... ok
+test tests::pending_requests_are_capped - should panic ... ok
+test tests::expired_requests_free_their_slot ... ok
+test tests::preview_agrees_with_pay ... ok
+test tests::report_needs_a_bond - should panic ... ok
+test tests::retracting_the_last_report_unblocks ... ok
+test tests::rejected_request_moves_nothing ... ok
+test tests::revoke_all_is_a_panic_button ... ok
+test tests::reported_receiver_is_blocked - should panic ... ok
+test tests::revoked_key_cannot_pay - should panic ... ok
+test tests::settled_transfer_counts_the_pair ... ok
+test tests::parent_budget_caps_children - should panic ... ok
+test tests::stranger_cannot_freeze_someone_elses_rein - should panic ... ok
+test tests::revoking_a_parent_revokes_the_subtree ... ok
+test tests::unknown_key_cannot_pay - should panic ... ok
+test tests::token_deposit_rejects_unknown_messages - should panic ... ok
+test tests::sub_account_agent_pays_from_the_owner_vault ... ok
+test tests::subrein_spending_counts_against_the_parent ... ok
+test tests::terms_are_validated - should panic ... ok
+test tests::token_deposit_credits_the_token_vault ... ok
+test tests::sub_account_key_does_not_work_from_the_owner_account - should panic ... ok
+test tests::vault_must_cover_the_payment - should panic ... ok
+test tests::unfreeze_restores_spending ... ok
+test tests::token_rein_pays_from_the_token_vault_only ... ok
+test tests::token_rein_limits_are_in_token_units - should panic ... ok
+test result: ok. 75 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.59s
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

@@ -1,0 +1,23 @@
+$ bun run scripts/verify.ts --tests
+PASS  cargo test -p reins                            test result: ok. 75 passed
+PASS  bun test                                       45 pass
+PASS  contract is deployed                           reins-near.testnet v0.2.0
+PASS  contract has settled payments                  29 reins, 17 payments, 3 approval requests
+PASS  drain account is on the blocklist              is_blocked(reins-near-owner.testnet, reins-near-drain.testnet) = true
+PASS  report evidence matches the file in this repo  sha256 ad53de60ba7c6a49…
+PASS  demo: guarded payment                          event payment (DVuz9gUx…)
+PASS  demo: approval request                         event approval_requested (7CDLfU1P…)
+PASS  demo: owner-approved payment                   event payment (7V9YPRq2…)
+PASS  demo: agent-issued sub-rein                    event rein_created (7kZFS2wR…)
+PASS  demo: sub-agent payment                        event payment (vqNbMCGb…)
+PASS  demo: named sub-account agent payment          event payment (EfaAS2oN…)
+PASS  demo: tUSD stablecoin payment                  event payment (HJuKJAsM…)
+PASS  attack: blocked receiver                       reverted on-chain with receiver_blocked (sLmuZ8CT…)
+PASS  attack: rollback on failed transfer            event payment_failed (5DmnS2jM…)
+PASS  attack: over cap                               reverted on-chain with over_per_tx_cap (7AvSZyTM…)
+PASS  attack: oversized sub-rein                     reverted on-chain with child_budget_above_parent (6C1bshc3…)
+PASS  chain signatures: signed Base Sepolia payment  event evm_payment_signed (5ysnzgdo…)
+PASS  chain signatures: merchant outside the list    reverted on-chain with merchant_not_allowed (GTfrw8ja…)
+PASS  chain signatures: over cap                     reverted on-chain with over_per_tx_cap (7Fif8tvs…)
+
+20/20 checks passed

@@ -1,0 +1,10 @@
+PASS demo account created: reins-mwgp8lu8dlr0.testnet
+PASS vault shows 1 NEAR after deposit
+PASS wizard shows the agent secret once
+PASS wizard shows the Claude Code command
+PASS preview_pay: the contract would pay
+PASS rein shows Frozen
+PASS rein shows Active after unfreeze
+PASS no console errors (0) 
+
+all passed
