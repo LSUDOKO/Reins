@@ -36,6 +36,22 @@ export class ReinsClient {
   stats() { return this.view<Stats>("stats"); }
   version() { return this.view<string>("version"); }
 
+  /**
+   * Remaining gas allowance of an agent's function-call key on the owner account, in
+   * yoctoNEAR. `null` when the key is not on the account (deleted, or never added).
+   */
+  async keyAllowance(owner: string, publicKey: string): Promise<string | null> {
+    const res = await fetch(this.rpcUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "query",
+        params: { request_type: "view_access_key", finality: "final", account_id: owner, public_key: publicKey } }),
+    }).then((r) => r.json() as Promise<any>);
+    const fc = res?.result?.permission?.FunctionCall;
+    if (!res?.result) return null;
+    return fc ? String(fc.allowance ?? "unlimited") : "full_access";
+  }
+
   previewPay(owner: string, public_key: string, receiver: string, amount: string) {
     return this.view<Preview>("preview_pay", { owner, public_key, receiver, amount });
   }
