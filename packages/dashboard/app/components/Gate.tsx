@@ -43,7 +43,7 @@ function SignIn({ onSignIn }: { onSignIn: () => void }) {
   const facts = [
     { i: <DKey size={22} />, t: "Your wallet signs every owner action. Reins never sees a key of yours." },
     { i: <DShield size={22} />, t: "Agents get a separate key that can only call three methods and can't attach money." },
-    { i: <DAgent size={22} />, t: "Works with MyNearWallet, HOT, Meteor, Intear and other NEAR wallets on testnet." },
+    { i: <DAgent size={22} />, t: "Works with MyNearWallet, HOT, Intear, HERE and Sender on testnet." },
   ];
   return (
     <main className="gate">
