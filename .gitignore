@@ -10,3 +10,5 @@ dist/
 .DS_Store
 *.log
 !demo/logs/*.log
+.playwright-mcp/
+web/receipts.json
