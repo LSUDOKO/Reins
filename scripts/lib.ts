@@ -5,12 +5,13 @@ import { join } from "node:path";
 import { JsonRpcProvider, type KeyPairString } from "near-api-js";
 import { DEFAULTS, ReinsClient } from "@reins/sdk";
 
-const prefix = process.env.PREFIX ?? "reins-demo";
+const prefix = process.env.PREFIX ?? "reins-near";
 export const CFG = {
   contract: process.env.REINS_CONTRACT ?? `${prefix}.testnet`,
   owner: process.env.OWNER ?? `${prefix}-owner.testnet`,
   merchant: process.env.MERCHANT ?? `${prefix}-shop.testnet`,
   scammer: process.env.SCAMMER ?? `${prefix}-drain.testnet`,
+  token: process.env.TOKEN ?? `${prefix}-tusd.testnet`,
   rpc: DEFAULTS.rpc,
   explorer: "https://testnet.nearblocks.io/txns/",
 };
