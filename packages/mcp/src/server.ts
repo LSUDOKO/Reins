@@ -6,7 +6,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { JsonRpcProvider, type KeyPairString } from "near-api-js";
 import { z } from "zod";
-import { AgentClient, DEFAULTS, ReinsClient, fromYocto, screenText, toYocto, type Assessment, type Preview } from "@reins/sdk";
+import { AgentClient, DEFAULTS, MPC_TESTNET, ReinsClient, deriveEvmAddress, fromYocto, recoverSigner, screenText, signedTx, toYocto, type Assessment, type Preview } from "@reins/sdk";
 import { quoteCrossChain } from "./intents";
 
 export interface Config {
@@ -119,6 +119,39 @@ export function buildServer(cfg: Config) {
       status: "registered", rein_id: id, tx: r.txHash,
       next: `Owner activates it: near account add-key ${cfg.owner} grant-function-call-access --allowance '0.1 NEAR' --contract-account-id ${contract} --function-names 'pay,request_approval,issue_subrein' use-manually-provided-public-key ${public_key} network-config testnet sign-with-keychain send`,
     });
+  });
+
+  server.registerTool("pay_cross_chain", {
+    description: "Pay ETH on the rein's EVM chain (e.g. Base Sepolia) through NEAR Chain Signatures. The Reins contract builds the transaction, checks it against your rein and has NEAR's MPC network sign it. Returns the signed raw transaction and broadcasts it when the rein's address can pay the gas.",
+    inputSchema: {
+      to: z.string().describe("0x merchant address"),
+      value_wei: z.string(),
+      rpc: z.string().default("https://sepolia.base.org").describe("EVM JSON-RPC for nonce, gas price and broadcast"),
+    },
+  }, async ({ to, value_wei, rpc: evmRpc }) => {
+    const rein = await agent.rein();
+    if (!rein?.terms.evm_chain_id) return text({ error: "not_an_evm_rein" });
+    const call = async (method: string, params: unknown[]) => {
+      const r: any = await fetch(evmRpc, { method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }) }).then((x) => x.json());
+      if (r.error) throw new Error(r.error.message);
+      return r.result;
+    };
+    const master = (await reins.provider.callFunction({ contractId: MPC_TESTNET, method: "public_key", args: {} })) as string;
+    const address = deriveEvmAddress(master, contract, `reins-${rein.id}`);
+    const nonce = Number(BigInt(await call("eth_getTransactionCount", [address, "pending"])));
+    const maxFee = (BigInt(await call("eth_gasPrice", [])) * 2n + 1_000_000n).toString();
+    const out = await agent.payEvm({ to, valueWei: value_wei, nonce: Math.max(nonce, Number(rein.evm_nonce)), maxFeePerGas: maxFee, maxPriorityFeePerGas: "1000000" });
+    if (out.error || !out.signature) return text({ status: "refused", code: out.error ?? "signature_failed", near_tx: out.txHash });
+    const raw = signedTx(out.evmTx, out.signature);
+    const signer = recoverSigner(out.evmTx.payload, out.signature);
+    let evm_tx: string | null = null;
+    try {
+      evm_tx = await call("eth_sendRawTransaction", [raw]);
+    } catch (e: any) {
+      return text({ status: "signed_not_broadcast", reason: String(e.message), signer, rein_address: address, raw_tx: raw, near_tx: out.txHash });
+    }
+    return text({ status: "broadcast", evm_tx, signer, near_tx: out.txHash });
   });
 
   server.registerTool("screen_text", {
