@@ -34,6 +34,8 @@ export type Wallet = {
   signOut: () => Promise<void>;
   /** Call an owner method on the contract. Returns the tx hash; throws the contract's error code. */
   call: (method: string, args: Record<string, unknown>, depositNear?: string) => Promise<string | null>;
+  /** Call any contract with an exact yoctoNEAR deposit (e.g. ft_transfer_call on a token). */
+  callOn: (receiverId: string, method: string, args: Record<string, unknown>, depositYocto: bigint) => Promise<string | null>;
   /** Add `publicKey` to the owner's own account as a function-call key for the agent methods. */
   addAgentKey: (publicKey: string, allowanceNear?: string) => Promise<string | null>;
   /**
@@ -107,6 +109,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         send(CONTRACT_ID, [
           actionCreators.functionCall(method, args, GAS, depositNear ? nearToYocto(depositNear) : ONE_YOCTO),
         ]),
+      callOn: (receiverId, method, args, depositYocto) => send(receiverId, [actionCreators.functionCall(method, args, GAS, depositYocto)]),
       addAgentKey: (publicKey, allowanceNear = AGENT_ALLOWANCE_NEAR) =>
         send(accountId ?? "", [
           actionCreators.addKey(
