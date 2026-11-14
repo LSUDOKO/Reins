@@ -1,6 +1,6 @@
 "use client";
 
-// The landing page: a creative studio's moodboard for a payments product. One
+// The landing page: a creative studio's moodboard for a spending-limits product. One
 // centered hero (badge, display headline with a highlighted word, subhead, CTA
 // stack, backed-by strip), then sections that breathe at 80px: how a payment
 // works, the sticky-note feature grid, the connect block, a yellow closing band, a short footer.
@@ -9,7 +9,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, type Variants } from "motion/react";
-import { usePrivy } from "@privy-io/react-auth";
+import { useWallet } from "@/lib/near";
 import { Logo } from "./Logo";
 import { ThemeToggle } from "./Theme";
 import { SketchArrow, SketchCircle, SketchLoop, SketchStar } from "./Sketch";
@@ -23,8 +23,8 @@ const stagger: Variants = { hidden: {}, show: { transition: { staggerChildren: 0
 /** The floating pill nav, shared by the landing page and the public pages. */
 export function PublicNav({ links = true }: { links?: boolean }) {
   const path = usePathname();
-  const { authenticated, ready } = usePrivy();
-  const dash = ready && authenticated ? "Open dashboard" : "Sign in";
+  const { accountId } = useWallet();
+  const dash = accountId ? "Open dashboard" : "Open the demo";
   return (
     <div className="lpnav-wrap">
       <nav className="lpnav" aria-label="Primary">
@@ -75,52 +75,51 @@ export function Landing() {
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <path d="M9 1.5 3.5 9h4l-1 5.5L12 7H8z" />
             </svg>
-            Agentic spending cards · live on Base
+            Spending limits for AI agents · live on NEAR testnet
           </motion.span>
           <motion.h1 className="lph1" variants={rise}>
-            Give your agent a <span className="hl wash">card</span>, not your keys.
+            Give your agent a <span className="hl wash">rein</span>, not your keys.
           </motion.h1>
           <motion.p className="lpsub" variants={rise}>
-            Issue a scoped, revocable spending card from your wallet. Any AI agent plugs it in over MCP and pays
-            within your limits — no keys, no gas, dead the moment you revoke. Every confirmed payment gets an
-            on-chain receipt written by KeeperHub.
+            A rein is a NEAR function-call key on your account that can call three methods of one contract and can never
+            attach a deposit. The Reins contract holds the rules — budget per window, per-payment cap, approvals, merchant
+            lock, a shared blocklist — and checks every payment. Revoke it and the key is dead.
           </motion.p>
           <motion.div className="lpctas" variants={rise}>
             <Link className="abtn primary big arrow" href="/app" data-testid="landing-cta">
-              Issue a card
+              Open the console
             </Link>
             <Link className="abtn pastel big" href="/docs">
               Read the docs
             </Link>
           </motion.div>
           <motion.p className="lpreassure" variants={rise}>
-            sign in with email or Google · no seed phrase, no card on file.
+            read-only without signing in · sign in with any NEAR wallet to manage your own reins.
           </motion.p>
           <motion.div className="lpbacked" variants={rise} aria-label="Built on">
             <span className="bl">Built on:</span>
-            <span>Base</span>
-            <span>ERC-7710</span>
-            <span>EIP-7702</span>
-            <span>x402</span>
-            <span>KeeperHub</span>
+            <span>NEAR</span>
+            <span>Function-call keys</span>
+            <span>NEP-297 events</span>
+            <span>NEAR Intents</span>
+            <span>Wallet Selector</span>
             <span>MCP</span>
-            <span>SigNoz</span>
           </motion.div>
         </motion.div>
       </header>
 
       {/* ---- how a payment works ---- */}
-      <Section id="how" eyebrow="How a payment works" title={<>Three moves, and the agent never touches money.</>}>
+      <Section id="how" eyebrow="How a payment works" title={<>Three moves, and the agent never holds your keys.</>}>
         <div className="steps">
           {[
             {
               n: "01",
-              t: "You issue",
+              t: "You create a rein",
               p: (
                 <>
-                  Set the terms — budget per period, per-payment cap, merchant allowlist, expiry — or draft them in
-                  plain language. Your wallet <span className="hl">signs the delegation</span> in the browser; the
-                  server stores it beside a fresh agent key that holds nothing.
+                  Set the terms — budget per window, per-payment cap, approval threshold, merchant lock, expiry — or draft
+                  them in plain language. Your wallet signs <code>create_rein</code>, then <span className="hl">adds the agent key</span>{" "}
+                  to your account as a function-call key.
                 </>
               ),
             },
@@ -129,18 +128,18 @@ export function Landing() {
               t: "The agent plugs in",
               p: (
                 <>
-                  One <code>claude mcp add</code>, a Cursor deeplink, or a pasted connector URL. The tool list is the
-                  permission surface: a pay-only card never sees <code>execute</code>.
+                  One <code>claude mcp add</code> with the agent&apos;s key. Before paying, the MCP server checks the receiver:
+                  blocklist, account age, code changes, history, look-alike names. Block refuses; warn asks you.
                 </>
               ),
             },
             {
               n: "03",
-              t: "It pays, with a receipt",
+              t: "The contract decides",
               p: (
                 <>
-                  Each <code>pay</code> is checked against the terms, redeemed gaslessly on Base in USDC from your
-                  wallet, then KeeperHub writes an <span className="hl">on-chain receipt</span> (PaymentAnchor) on Base Sepolia.
+                  <code>pay</code> is checked against every rule on-chain and sent from your vault. A failed transfer
+                  rolls the budget back. Every step leaves a <span className="hl">NEP-297 event</span> anyone can read.
                 </>
               ),
             },
@@ -155,27 +154,27 @@ export function Landing() {
       </Section>
 
       {/* ---- features as sticky notes ---- */}
-      <Section id="features" eyebrow="What a card can do" title={<>Everything a card should be, <span className="hl">rebuilt</span> for agents.</>}>
+      <Section id="features" eyebrow="What a rein can do" title={<>Everything a spending limit should be, <span className="hl">held</span> by the chain.</>}>
         <div className="notes">
-          <Note k="Scope" tone="mint" title="Terms the chain enforces" foot="ERC-7710 caveats · Base mainnet">
-            Period budget, lifetime cap, per-payment max, merchant allowlist, expiry, usage count. The enforcers check
-            every one again on-chain, so the server can never approve what the chain would reject.
+          <Note k="Scope" tone="mint" title="Terms the contract enforces" foot="Reins contract · NEAR testnet">
+            Budget per window or lifetime, per-payment cap, merchant lock, expiry, usage count. The agent key can only
+            call <code>pay</code>, <code>request_approval</code> and <code>issue_subrein</code>.
           </Note>
-          <Note k="Kill switch" title="Revoke, and it's dead" foot="server-side instantly · on-chain underneath">
-            Freeze or revoke a card — or its whole sub-card tree — and every payment stops. Sub-cards nest tighter terms
-            for sub-agents and die with their parent.
+          <Note k="Human" title="You approve the big ones" foot="request_approval · approve_request">
+            Above your threshold the agent files a request instead of paying. You approve with a full-access key; the
+            contract re-checks every other rule before the money moves.
           </Note>
-          <Note k="Receipt" tone="teal" title="A receipt for every payment" foot="PaymentAnchor · KeeperHub · Base Sepolia">
-            Every confirmed payment gets an on-chain receipt (PaymentAnchor) written by KeeperHub on Base Sepolia, so
-            anyone can check what was paid, to whom, and when.
+          <Note k="Kill switch" tone="teal" title="Freeze, revoke, revoke all" foot="one transaction each">
+            Freeze a rein for a moment, revoke it and its whole sub-rein tree for good, or revoke every rein you own in
+            one transaction.
           </Note>
-          <Note k="Rails" title="Pays the open web" foot="x402 · Visa (test mode) · contract calls">
-            <code>paid_fetch</code> settles HTTP 402 challenges automatically; a fiat lane buys over Visa rails; contract
-            cards run scoped swaps and approvals atomically.
+          <Note k="Guard" title="A blocklist with evidence" foot="bonded reports · per-owner override">
+            Anyone can report a drain address with a bond and a hash of the evidence. Every rein refuses to pay it unless
+            its owner explicitly allows it.
           </Note>
-          <Note k="Operate" title="Built to run, not to demo" foot="webhooks · teams · audit · SDK">
-            Signed webhooks with retries, roles over shared cards, a CSV-exportable audit log, budget alerts, and a
-            typed SDK. Every hop traced into SigNoz.
+          <Note k="Sub-agents" title="Agents split, never mint" foot="issue_subrein · owner adds the key">
+            An agent can carve a narrower rein for a sub-agent. It only works once you add the sub-agent&apos;s key, and
+            its spending counts against every ancestor.
           </Note>
         </div>
       </Section>
@@ -184,27 +183,27 @@ export function Landing() {
       <Section id="connect" eyebrow="Connecting an agent" title={<>One line in any harness.</>}>
         <div className="lpsplit rev" style={{ marginTop: 32 }}>
           <div>
-            <pre className="lpcode">{`# Lane A · secret in the URL path
-claude mcp add --transport http remit `}<span className="y">https://&lt;host&gt;/c/&lt;card-secret&gt;/mcp</span>{`
-
-# Lane C · OAuth 2.1, card-picker consent
-claude mcp add --transport http remit https://<host>/mcp
-`}<span className="c"># the client discovers the OAuth lane on the 401, registers itself,
-# and opens a browser: you pick which card to grant.</span></pre>
+            <pre className="lpcode">{`# the agent's key is shown once, when you create the rein
+claude mcp add reins \
+  -e REINS_OWNER=you.testnet \
+  -e `}<span className="y">REINS_AGENT_KEY=ed25519:&lt;agent-secret&gt;</span>{` \
+  -- bun run Reins/packages/mcp/src/index.ts
+`}<span className="c"># tools: rein_status, check_counterparty, preview_payment,
+# pay, approval_status, issue_subrein, quote_cross_chain</span></pre>
             <div className="lpharness">
-              {["Claude Code", "claude.ai", "Cursor", "VS Code", "Codex", "Gemini CLI", "Goose", "Windsurf", "ChatGPT", "OpenClaw", "Amp", "Droid"].map((h) => (
+              {["Claude Code", "Codex", "Cursor", "VS Code", "Goose", "any MCP client"].map((h) => (
                 <span key={h}>{h}</span>
               ))}
             </div>
           </div>
           <div>
             <p className="lplede">
-              The card <em>is</em> the connection. Behind the URL sits a scoped delegation; the agent holds the card,
-              never the money. Rotate the secret from the dashboard and the old URL dies instantly.
+              The key <em>is</em> the connection. It lives on your account, but NEAR itself stops it from attaching a
+              deposit, adding keys or calling any other method — the protocol, not a promise.
             </p>
             <p className="lplede" style={{ marginTop: 12 }}>
-              Refusals are typed — <code>over_period_limit</code>, <code>merchant_not_allowed</code>,{" "}
-              <code>price_exceeds_max</code> — so an agent can relay them honestly instead of guessing.
+              Refusals are typed — <code>over_per_tx_cap</code>, <code>receiver_blocked</code>, <code>needs_approval</code>{" "}
+              — so an agent can relay them honestly instead of guessing.
             </p>
           </div>
         </div>
@@ -214,11 +213,11 @@ claude mcp add --transport http remit https://<host>/mcp
       <div className="lpwrap">
         <motion.div className="lpband" variants={rise} initial="hidden" whileInView="show" viewport={{ once: true, margin: "-60px" }}>
           <SketchArrow className="sk" size={140} />
-          <h2 className="lph2">Your agent&apos;s first card takes about a minute.</h2>
-          <p className="lplede">Real USDC on Base mainnet. The only simulated leg is the Visa rail, labelled wherever it appears.</p>
+          <h2 className="lph2">Your agent&apos;s first rein takes about a minute.</h2>
+          <p className="lplede">NEAR testnet. Look around the demo owner&apos;s reins without signing in.</p>
           <div className="lpctas">
             <Link className="abtn primary big arrow" href="/app">
-              Open the dashboard
+              Open the console
             </Link>
             <Link className="abtn big" href="/docs">
               Read the docs
@@ -230,20 +229,14 @@ claude mcp add --transport http remit https://<host>/mcp
           <Logo size="sm" />
           <nav aria-label="Footer">
             <Link href="/docs">Docs</Link>
-            <a href="https://github.com/LSUDOKO/KeeperCard" target="_blank" rel="noreferrer">
+            <a href="https://github.com/LSUDOKO/Reins" target="_blank" rel="noreferrer">
               GitHub
             </a>
-            <a href="https://github.com/LSUDOKO/KeeperCard/blob/main/CHANGELOG.md" target="_blank" rel="noreferrer">
-              Changelog
-            </a>
-            <a href="https://github.com/LSUDOKO/KeeperCard/blob/main/SECURITY.md" target="_blank" rel="noreferrer">
-              Security
-            </a>
-            <a href="https://github.com/LSUDOKO/KeeperCard/blob/main/LICENSE" target="_blank" rel="noreferrer">
+            <a href="https://github.com/LSUDOKO/Reins/blob/main/LICENSE" target="_blank" rel="noreferrer">
               License
             </a>
           </nav>
-          <span className="fine">Base mainnet · receipts on Base Sepolia via KeeperHub · built for the SigNoz hackathon</span>
+          <span className="fine">NEAR testnet · built at NEAR HACKATHON</span>
         </footer>
       </div>
     </div>
