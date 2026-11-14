@@ -60,6 +60,8 @@
       "name": "@reins/sdk",
       "version": "0.1.0",
       "dependencies": {
+        "@noble/curves": "^2.4.0",
+        "@noble/hashes": "^2.4.0",
         "near-api-js": "^7.5.3",
       },
     },

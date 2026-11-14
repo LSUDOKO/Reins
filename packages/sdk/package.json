@@ -9,6 +9,8 @@
     "test": "bun test"
   },
   "dependencies": {
-    "near-api-js": "^7.5.3"
+    "near-api-js": "^7.5.3",
+    "@noble/curves": "^2.4.0",
+    "@noble/hashes": "^2.4.0"
   }
 }
