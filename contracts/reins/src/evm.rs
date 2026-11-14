@@ -133,7 +133,8 @@ impl Reins {
             max_priority_fee_per_gas.0 <= max_fee_per_gas.0,
             "priority_fee_above_max_fee"
         );
-        require!(nonce.0 >= rein.evm_nonce.0, "nonce_already_used");
+        // Exactly the next nonce: no gaps that would strand funds, no re-signing a used nonce.
+        require!(nonce.0 == rein.evm_nonce.0, "wrong_nonce");
         // The budget is charged for the value plus the most the fee could cost.
         let cost = value.0 + max_fee_per_gas.0 * TRANSFER_GAS as u128;
         let receiver: AccountId = to
@@ -143,7 +144,7 @@ impl Reins {
         if let Err(code) = self.check(id, &receiver, cost, false, at) {
             fail(code);
         }
-        let chain = self.book(id, cost, at);
+        let booking = self.book(id, cost, at);
         self.reins.get_mut(&id).unwrap().evm_nonce = U64(nonce.0 + 1);
 
         let unsigned = eip1559_unsigned(
@@ -160,7 +161,8 @@ impl Reins {
         Promise::new(self.mpc.clone())
             .function_call("sign".to_string(), request.to_string().into_bytes(), NearToken::from_yoctonear(1), MPC_SIGN_GAS)
             .then(Self::ext(env::current_account_id()).with_static_gas(MPC_CALLBACK_GAS).on_signed(
-                chain,
+                booking,
+                nonce,
                 rein.owner,
                 to,
                 U128(cost),
@@ -176,7 +178,8 @@ impl Reins {
     #[private]
     pub fn on_signed(
         &mut self,
-        chain: Vec<ReinId>,
+        booking: Booking,
+        nonce: U64,
         owner: AccountId,
         to: String,
         cost: U128,
@@ -185,7 +188,7 @@ impl Reins {
         let sig = env::promise_result_checked(0, 2048)
             .ok()
             .and_then(|b| near_sdk::serde_json::from_slice::<Value>(&b).ok());
-        let leaf = chain[0];
+        let leaf = booking.chain[0];
         match sig {
             Some(signature) => {
                 self.evm_signatures += 1;
@@ -197,9 +200,12 @@ impl Reins {
                 PromiseOrValue::Value(json!({ "signature": signature, "tx": tx }))
             }
             None => {
-                self.unbook(&chain, &owner, cost.0);
+                self.unbook(&booking, &owner, cost.0);
+                // Give the nonce back only if nothing was signed after it.
                 if let Some(r) = self.reins.get_mut(&leaf) {
-                    r.evm_nonce = U64(r.evm_nonce.0.saturating_sub(1));
+                    if r.evm_nonce.0 == nonce.0 + 1 {
+                        r.evm_nonce = nonce;
+                    }
                 }
                 emit(
                     "evm_payment_failed",
