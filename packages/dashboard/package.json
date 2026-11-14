@@ -8,7 +8,8 @@
     "typecheck": "tsc --noEmit",
     "receipts": "mkdir -p public && cp ../../demo/receipts.json public/receipts.json",
     "predev": "bun run receipts",
-    "prebuild": "bun run receipts"
+    "prebuild": "bun run receipts",
+    "deploy:cf": "wrangler pages deploy out --project-name reins"
   },
   "dependencies": {
     "@near-js/crypto": "^2.5.1",
