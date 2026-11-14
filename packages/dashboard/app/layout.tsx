@@ -13,12 +13,12 @@ const sans = Inter({ weight: ["400", "500", "600", "700"], subsets: ["latin"], v
 const mono = Roboto_Mono({ weight: ["400", "500"], subsets: ["latin"], variable: "--font-mono", display: "swap" });
 
 export const metadata: Metadata = {
-  title: { default: "KeeperCard — spending cards for AI agents", template: "%s · KeeperCard" },
+  title: { default: "Reins — spending limits for AI agents on NEAR", template: "%s · Reins" },
   description:
-    "Issue scoped, revocable spending cards from your wallet. Any AI agent plugs one in over MCP and pays within your limits; every confirmed payment gets an on-chain receipt.",
+    "Give an agent a function-call key, not your keys. The Reins contract holds the budget, the per-payment cap, the approvals and a shared blocklist, and checks every payment.",
   openGraph: {
-    title: "KeeperCard — spending cards for AI agents",
-    description: "Give your agent a card, not your keys. Scoped, revocable, with an on-chain receipt for every payment.",
+    title: "Reins — spending limits for AI agents on NEAR",
+    description: "The agent holds a function-call key. The contract holds the rules.",
     type: "website",
   },
 };
