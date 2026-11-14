@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reins Dashboard</title>
+<meta name="description" content="Read-only view of a Reins deployment on NEAR testnet: reins, spending, approvals and the shared blocklist.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect width=%2216%22 height=%2216%22 fill=%22%23a8741a%22/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f1ea; --panel: #fffdf8; --ink: #1d1b16; --muted: #6b665b; --line: #ddd6c8;
+    --brass: #a8741a; --ok: #2f6b3a; --warn: #9a6a00; --bad: #a3271f; --bar: #e9e2d3;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #14130f; --panel: #1c1a15; --ink: #ece6d8; --muted: #a39b8a; --line: #34302763;
+      --brass: #d9a441; --ok: #7cc48a; --warn: #e2b44a; --bad: #ef7d74; --bar: #2a271f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #14130f; --panel: #1c1a15; --ink: #ece6d8; --muted: #a39b8a; --line: #343027;
+    --brass: #d9a441; --ok: #7cc48a; --warn: #e2b44a; --bad: #ef7d74; --bar: #2a271f;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 "IBM Plex Sans", system-ui, sans-serif; }
+  main { max-width: 1040px; margin: 0 auto; padding: 32px 16px 64px; }
+  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: baseline; justify-content: space-between; border-bottom: 2px solid var(--ink); padding-bottom: 12px; }
+  h1 { font: 600 28px/1 "IBM Plex Mono", monospace; margin: 0; letter-spacing: -0.5px; }
+  h1 span { color: var(--brass); }
+  h2 { font: 600 13px/1 "IBM Plex Mono", monospace; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin: 32px 0 12px; }
+  .sub { color: var(--muted); font-size: 14px; }
+  .mono, code { font-family: "IBM Plex Mono", monospace; font-size: 13px; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 20px; }
+  .stat { background: var(--panel); border: 1px solid var(--line); padding: 14px; }
+  .stat b { display: block; font: 600 24px/1.2 "IBM Plex Mono", monospace; }
+  .stat small { color: var(--muted); }
+  form { display: flex; gap: 8px; flex-wrap: wrap; }
+  input { flex: 1 1 260px; min-width: 0; padding: 9px 10px; font: 14px "IBM Plex Mono", monospace; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+  button { padding: 9px 16px; font: 600 14px "IBM Plex Sans", sans-serif; background: var(--ink); color: var(--bg); border: 0; cursor: pointer; }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+  .reins { display: grid; gap: 10px; margin-top: 12px; }
+  .rein { background: var(--panel); border: 1px solid var(--line); padding: 14px; display: grid; grid-template-columns: 1fr auto; gap: 6px 16px; }
+  .rein.child { margin-left: 28px; border-left: 3px solid var(--brass); }
+  .rein .name { font-weight: 600; }
+  .bar { grid-column: 1 / -1; height: 8px; background: var(--bar); }
+  .bar i { display: block; height: 100%; background: var(--brass); }
+  .meta { grid-column: 1 / -1; color: var(--muted); font-size: 13px; display: flex; flex-wrap: wrap; gap: 4px 16px; }
+  .pill { font: 600 11px/1 "IBM Plex Mono", monospace; padding: 4px 6px; border: 1px solid currentColor; text-transform: uppercase; }
+  .Active { color: var(--ok); } .Frozen { color: var(--warn); } .Revoked { color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font: 600 12px "IBM Plex Mono", monospace; color: var(--muted); text-transform: uppercase; }
+  .scroll { overflow-x: auto; }
+  a { color: var(--brass); }
+  .verdict { font-weight: 600; } .v-block { color: var(--bad); } .v-ok { color: var(--ok); }
+  .empty { color: var(--muted); padding: 12px 0; }
+  .err { color: var(--bad); }
+  footer { margin-top: 48px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); padding-top: 12px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>re<span>i</span>ns</h1>
+    <div class="sub">Spending limits for AI agents on NEAR · contract <code id="cid"></code> · testnet · read-only</div>
+  </header>
+
+  <section class="stats" id="stats" aria-live="polite"></section>
+
+  <h2>Owner</h2>
+  <form id="ownerForm">
+    <input id="owner" aria-label="Owner account" placeholder="owner.testnet" autocomplete="off">
+    <button>Show reins</button>
+  </form>
+  <div id="vault" class="sub" style="margin-top:8px"></div>
+  <div class="reins" id="reins"></div>
+
+  <h2>Pending approvals</h2>
+  <div class="scroll" id="pending"></div>
+
+  <h2>Shared blocklist</h2>
+  <form id="checkForm">
+    <input id="account" aria-label="Account to check" placeholder="account to check, e.g. reins-demo-drain.testnet" autocomplete="off">
+    <button>Check</button>
+  </form>
+  <div id="check" style="margin-top:12px"></div>
+
+  <h2>Recorded transactions</h2>
+  <p class="sub">From <code>demo/receipts.json</code>. Each one is re-checked by <code>bun run verify</code>.</p>
+  <div class="scroll" id="receipts"></div>
+
+  <footer>
+    Reins holds no keys here; this page only calls view methods over public RPC.
+    Source: <a href="https://github.com/LSUDOKO/Reins">github.com/LSUDOKO/Reins</a>.
+  </footer>
+</main>
+<script>
+const P = new URLSearchParams(location.search);
+const CONTRACT = P.get("contract") || "reins-demo.testnet";
+const RPC = P.get("rpc") || "https://test.rpc.fastnear.com";
+const DEFAULT_OWNER = P.get("owner") || "reins-demo-owner.testnet";
+const EXPLORER = "https://testnet.nearblocks.io/txns/";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const near = (y) => { const v = BigInt(y || 0); const w = v / 10n ** 24n; const f = (v % 10n ** 24n).toString().padStart(24, "0").slice(0, 4).replace(/0+$/, ""); return f ? `${w}.${f}` : `${w}`; };
+
+async function view(method, args = {}) {
+  const res = await fetch(RPC, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "query", params: {
+      request_type: "call_function", finality: "final", account_id: CONTRACT, method_name: method,
+      args_base64: btoa(JSON.stringify(args)) } }),
+  }).then((r) => r.json());
+  if (res.error || res.result?.error) throw new Error(res.error?.cause?.name || res.result.error);
+  return JSON.parse(new TextDecoder().decode(new Uint8Array(res.result.result)));
+}
+
+async function loadStats() {
+  try {
+    const [s, v] = await Promise.all([view("stats"), view("version")]);
+    $("stats").innerHTML = [
+      ["reins", s.reins, "created"], ["payments", s.payments, "settled"],
+      ["volume", near(s.volume), "NEAR moved"], ["approvals", s.requests, "requested"], ["version", v, "contract"],
+    ].map(([k, b, sm]) => `<div class="stat"><small>${k}</small><b>${esc(b)}</b><small>${sm}</small></div>`).join("");
+  } catch (e) { $("stats").innerHTML = `<p class="err">RPC error: ${esc(e.message)}</p>`; }
+}
+
+function reinCard(r) {
+  const pct = Math.min(100, Number((BigInt(r.spent) * 10000n) / BigInt(r.terms.budget || 1)) / 100);
+  const t = r.terms;
+  return `<div class="rein ${r.parent ? "child" : ""}">
+    <div><span class="name">#${r.id} ${esc(r.label)}</span>${r.parent ? ` <span class="sub">sub-rein of #${r.parent}</span>` : ""}</div>
+    <span class="pill ${r.status}">${r.status}</span>
+    <div class="bar" role="img" aria-label="${pct}% of budget spent"><i style="width:${pct}%"></i></div>
+    <div class="meta">
+      <span>${near(r.spent)} / ${near(t.budget)} NEAR ${Number(t.period_secs) ? `per ${Number(t.period_secs) / 3600}h` : "lifetime"}</span>
+      <span>cap ${near(t.per_tx_cap)}</span>
+      ${t.approval_above ? `<span>approval above ${near(t.approval_above)}</span>` : ""}
+      ${t.merchants ? `<span>merchants: ${t.merchants.map(esc).join(", ")}</span>` : ""}
+      <span>${r.uses} payments · ${near(r.total_spent)} NEAR total</span>
+      <span class="mono">${esc(r.agent_key.slice(0, 20))}…</span>
+    </div></div>`;
+}
+
+async function loadOwner(owner) {
+  $("reins").innerHTML = `<p class="empty">Loading…</p>`;
+  try {
+    const [vault, list, pending] = await Promise.all([view("vault_of", { owner }), view("reins_of", { owner }), view("pending_requests_of", { owner })]);
+    $("vault").textContent = `Vault: ${near(vault)} NEAR held by the contract for ${owner}`;
+    const byParent = (p) => list.filter((r) => (r.parent ?? null) === p);
+    const walk = (p) => byParent(p).flatMap((r) => [reinCard(r), ...walk(r.id)]);
+    $("reins").innerHTML = list.length ? walk(null).join("") : `<p class="empty">No reins for this owner.</p>`;
+    $("pending").innerHTML = pending.length ? `<table><tr><th>request</th><th>rein</th><th>amount</th><th>to</th><th>memo</th></tr>${
+      pending.map((q) => `<tr><td>${q.id}</td><td>#${q.rein_id}</td><td>${near(q.amount)} NEAR</td><td class="mono">${esc(q.receiver)}</td><td>${esc(q.memo)}</td></tr>`).join("")}</table>`
+      : `<p class="empty">None.</p>`;
+  } catch (e) { $("reins").innerHTML = `<p class="err">${esc(e.message)}</p>`; }
+}
+
+async function check(account) {
+  const owner = $("owner").value || DEFAULT_OWNER;
+  try {
+    const [reports, blocked, pairs] = await Promise.all([view("reports_of", { account }), view("is_blocked", { owner, receiver: account }), view("pair_count", { owner, receiver: account })]);
+    $("check").innerHTML = `<p><span class="verdict ${blocked ? "v-block" : "v-ok"}">${blocked ? "BLOCKED" : "not blocked"}</span> for ${esc(owner)} · ${pairs} prior payment(s) · ${reports.length} report(s)</p>` +
+      (reports.length ? `<table><tr><th>reporter</th><th>bond</th><th>evidence</th><th>sha256</th></tr>${reports.map((r) =>
+        `<tr><td class="mono">${esc(r.reporter)}</td><td>${near(r.bond)} NEAR</td><td><a href="${esc(r.evidence_uri)}" rel="noopener">${esc(r.evidence_uri.split("/").pop())}</a></td><td class="mono">${esc(r.evidence_hash.slice(0, 16))}…</td></tr>`).join("")}</table>` : "");
+  } catch (e) { $("check").innerHTML = `<p class="err">${esc(e.message)}</p>`; }
+}
+
+async function loadReceipts() {
+  try {
+    const list = await fetch("receipts.json").then((r) => r.json());
+    $("receipts").innerHTML = `<table><tr><th>what</th><th>expected</th><th>tx</th></tr>${list.map((r) =>
+      `<tr><td>${esc(r.label)}</td><td class="mono">${esc(r.expect === "panic" ? `revert: ${r.code}` : r.expect)}</td><td><a class="mono" href="${EXPLORER}${esc(r.txHash)}" rel="noopener">${esc(r.txHash.slice(0, 10))}…</a></td></tr>`).join("")}</table>`;
+  } catch { $("receipts").innerHTML = `<p class="empty">receipts.json not found next to this page.</p>`; }
+}
+
+$("cid").textContent = CONTRACT;
+$("owner").value = DEFAULT_OWNER;
+$("account").value = "reins-demo-drain.testnet";
+$("ownerForm").onsubmit = (e) => { e.preventDefault(); loadOwner($("owner").value.trim()); };
+$("checkForm").onsubmit = (e) => { e.preventDefault(); check($("account").value.trim()); };
+loadStats(); loadOwner(DEFAULT_OWNER); check($("account").value); loadReceipts();
+</script>
+</body>
+</html>
