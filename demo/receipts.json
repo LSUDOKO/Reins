@@ -1,52 +1,91 @@
 [
   {
+    "label": "chain signatures: signed Base Sepolia payment",
+    "txHash": "3y8qKiaonBMUUfgEykdZ9Af57W5qPxXFAbXtFpoyvd1G",
+    "signer": "reins-near-owner.testnet",
+    "expect": "evm_payment_signed"
+  },
+  {
+    "label": "chain signatures: merchant outside the list",
+    "txHash": "8CY5HjXBCSorFWmiufJdP1dLTouaozV1nPv1rPutuJMX",
+    "signer": "reins-near-owner.testnet",
+    "expect": "panic",
+    "code": "merchant_not_allowed"
+  },
+  {
+    "label": "chain signatures: over cap",
+    "txHash": "A9JaTqbYrowsufZ9gqHZGDrvFgFMnVWqMamDuMw3ri6x",
+    "signer": "reins-near-owner.testnet",
+    "expect": "panic",
+    "code": "over_per_tx_cap"
+  },
+  {
     "label": "demo: guarded payment",
-    "txHash": "6B27MivakyDTfWqQGtkYbyADxkV9oVEpSQjmDLHG5iLa",
-    "signer": "reins-demo-owner.testnet",
+    "txHash": "gG9p4VZv7kYAfkQ5f5YY31MsfmUDBwEhrm6vVBzMHyt",
+    "signer": "reins-near-owner.testnet",
     "expect": "payment"
   },
   {
     "label": "demo: approval request",
-    "txHash": "8dScJrANcbkHQCeZE8vEnDKKgRDywUG8Cz5F1CxAWDAx",
-    "signer": "reins-demo-owner.testnet",
+    "txHash": "9CfuiBHmmV51H6mt3rqLB9UK4eiPh6XQG8qC8SvHbtSR",
+    "signer": "reins-near-owner.testnet",
     "expect": "approval_requested"
   },
   {
     "label": "demo: owner-approved payment",
-    "txHash": "5YUV7csnZCCiWTmLbW8BXoZSDYKThc9ud9EdoszSMt3a",
-    "signer": "reins-demo-owner.testnet",
+    "txHash": "3yDJkT3Mift8QHMjj46ASnR7n74om2RpfM7tUHZ5Fx6v",
+    "signer": "reins-near-owner.testnet",
     "expect": "payment"
   },
   {
     "label": "demo: agent-issued sub-rein",
-    "txHash": "J9G5WmFTH8MP9GeDhZXmf29xoihZWwadroVytZo22kpJ",
-    "signer": "reins-demo-owner.testnet",
+    "txHash": "BW8wrkbJqVuZcE6bKMu9bykREMHhNEX6EskwoxXderqf",
+    "signer": "reins-near-owner.testnet",
     "expect": "rein_created"
   },
   {
     "label": "demo: sub-agent payment",
-    "txHash": "7UGeGXBxA2QMAkiABzubyfz7538Jb21DnxywQL9dUhxa",
-    "signer": "reins-demo-owner.testnet",
+    "txHash": "HueFU2cGdRZ3Lz5uRiYPEG1yoPon64m9tY83ayNuGEXa",
+    "signer": "reins-near-owner.testnet",
+    "expect": "payment"
+  },
+  {
+    "label": "demo: named sub-account agent payment",
+    "txHash": "CKT6k4FVtghMugCbCYS3WKHA9H9MmRhH4VPjwPHbfwwN",
+    "signer": "amwghqoy2.reins-near-owner.testnet",
+    "expect": "payment"
+  },
+  {
+    "label": "demo: tUSD stablecoin payment",
+    "txHash": "FAGTDeELN65QGUt8g3SK5Ms1U55FMMYAEN4QDYVkTjuD",
+    "signer": "reins-near-owner.testnet",
     "expect": "payment"
   },
   {
     "label": "attack: blocked receiver",
-    "txHash": "H8jNcuKwmKzLCD3qHFfhQ41a8S7JAQE9Tijfdyt77k2S",
-    "signer": "reins-demo-owner.testnet",
+    "txHash": "9g4kunNoJ5ShCSBTFiZs1pqM183iLwDgCNDrvBQhsqxU",
+    "signer": "reins-near-owner.testnet",
     "expect": "panic",
     "code": "receiver_blocked"
   },
   {
     "label": "attack: rollback on failed transfer",
-    "txHash": "8qAQ3jUcL8HCgNZVoATvjkuhCGmcMyMRs4V7JCLtNK3G",
-    "signer": "reins-demo-owner.testnet",
+    "txHash": "6WFbMj19cMAR9datfLQRbwx2LXZDZBciMAU7VJtHFUPB",
+    "signer": "reins-near-owner.testnet",
     "expect": "payment_failed"
   },
   {
     "label": "attack: over cap",
-    "txHash": "H5HCyT1c9TaCdZsiDjgmewEQmRpjT5uAJiv6neNQW1tj",
-    "signer": "reins-demo-owner.testnet",
+    "txHash": "2eXWbKSYiTcCQkPdeR4UseRwrputvfLDM6En6T5hqdvA",
+    "signer": "reins-near-owner.testnet",
     "expect": "panic",
     "code": "over_per_tx_cap"
+  },
+  {
+    "label": "attack: oversized sub-rein",
+    "txHash": "DnBXjVhCetXwNXtr7u5gzQ7NYJsZqrSJQdH1UkqidU5d",
+    "signer": "reins-near-owner.testnet",
+    "expect": "panic",
+    "code": "child_budget_above_parent"
   }
 ]
