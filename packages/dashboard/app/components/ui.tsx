@@ -21,9 +21,9 @@ export function splitAmount(v: string | number | null | undefined): [string, str
   return [`${n < 0 ? "-" : ""}${whole.toLocaleString("en-US")}`, cents.toString().padStart(2, "0")];
 }
 
-export function fmtUsd(v: string | number | null | undefined): string {
+export function fmtNear(v: string | number | null | undefined): string {
   const [w, c] = splitAmount(v);
-  return `$${w}.${c}`;
+  return `Ⓝ${w}.${c}`;
 }
 
 /** display-capitalize a status word coming from data: "revoked" -> "Revoked" */
@@ -369,7 +369,7 @@ export function Barcode({
       </svg>
       {pick !== null && (
         <div className="bktip" style={{ left: `${(((pick * step + bw / 2) / width) * 100).toFixed(1)}%` }}>
-          <b>{fmtUsd(values[pick])}</b>
+          <b>{fmtNear(values[pick])}</b>
           <span>{labels[pick]}</span>
         </div>
       )}

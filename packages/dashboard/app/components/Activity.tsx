@@ -4,7 +4,7 @@
 // attribution · the compact dossier list and the 30-day daily-spend stats.
 
 import type { Charge } from "@/lib/api";
-import { fmtUsd, shortHex } from "./ui";
+import { fmtNear, shortHex } from "./ui";
 import { txUrl } from "@/lib/chain";
 
 const OK_STATUSES = new Set(["settled", "succeeded", "ok", "confirmed", "paid"]);
@@ -98,8 +98,8 @@ export function ChargeList({ rows, empty }: { rows: FeedRow[]; empty: string }) 
               <span className="railchip">{railLabel(ch.kind)}</span>
             </span>
             <span className="a-amt">
-              <span className="cur">$</span>
-              {fmtUsd(ch.amount).slice(1)}
+              <span className="cur">Ⓝ</span>
+              {fmtNear(ch.amount).slice(1)}
             </span>
             <span className={`a-state${ok || inFlight(ch.status) ? "" : " blocked"}`}>
               <span className="gdot" />

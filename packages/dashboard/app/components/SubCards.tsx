@@ -5,7 +5,7 @@
 
 import Link from "next/link";
 import type { TreeNode } from "@/lib/api";
-import { Guilloche, capWord, fmtUsd, isDead, panGroups, periodLabel } from "./ui";
+import { Guilloche, capWord, fmtNear, isDead, panGroups, periodLabel } from "./ui";
 import { allowance } from "./Authority";
 
 function rowClass(status: string): string {
@@ -30,7 +30,7 @@ export function SubRows({
           const per = c.terms.pay?.period ? ` / ${periodLabel(c.terms.pay.period.seconds)}` : "";
           const ct = c.terms.contract;
           const capLine = capAmt
-            ? `≤ $${capAmt}${per}`
+            ? `≤ Ⓝ${capAmt}${per}`
             : ct
               ? `Execute${ct.perTradeMax ? ` · ≤ $${ct.perTradeMax}/trade` : ""}`
               : "Unmetered";
@@ -56,7 +56,7 @@ export function SubRows({
                     "No spend"
                   ) : (
                     <>
-                      <span className="data">{fmtUsd(spent)}</span> spent
+                      <span className="data">{fmtNear(spent)}</span> spent
                     </>
                   )}
                 </span>

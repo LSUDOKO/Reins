@@ -25,7 +25,7 @@ import {
   IconSnowflake,
   StatusPill,
   fmtCountdown,
-  fmtUsd,
+  fmtNear,
   isDead,
   periodLabel,
   splitAmount,
@@ -463,7 +463,7 @@ export function bayAggregate(roots: TreeNode[]): string {
   }
   if (sum === 0) return cards;
   const suffix = periods.size === 1 ? (periods.has("lifetime") ? " lifetime" : ` / ${[...periods][0]}`) : "";
-  return `${cards} · ${fmtUsd(sum)}${suffix} delegated`;
+  return `${cards} · ${fmtNear(sum)}${suffix} delegated`;
 }
 
 // ---------------------------------------------------------------------------
@@ -649,7 +649,7 @@ function HeadBody({ card }: { card: CardState }) {
         <div className="fig">
           {metered || ptLive || !ct ? (
             <span data-testid="remaining">
-              <span className="cur">$</span>
+              <span className="cur">Ⓝ</span>
               <span className="int">{whole}</span>
               <span className="dec">.{cents}</span>
             </span>
